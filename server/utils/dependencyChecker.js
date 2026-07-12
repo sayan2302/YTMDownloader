@@ -3,8 +3,9 @@ import path from 'path';
 import https from 'https';
 import { execSync } from 'child_process';
 import ffmpeg from 'ffmpeg-static';
+import { getDataDir } from './paths.js';
 
-const BIN_DIR = path.join(process.cwd(), 'bin');
+const BIN_DIR = path.join(getDataDir(), 'bin');
 let YTDLP_PATH = 'yt-dlp';
 let FFMPEG_PATH = ffmpeg || 'ffmpeg';
 
@@ -66,10 +67,29 @@ export async function checkAndSetupDependencies() {
 
   // 2. yt-dlp Verification
   try {
-    execSync('yt-dlp --version', { stdio: 'ignore' });
-    console.log('[System Check] yt-dlp resolved via global installation.');
-    YTDLP_PATH = 'yt-dlp';
-    status.ytDlp = 'ready';
+    let resolvedGlobal = false;
+    if (process.platform === 'darwin') {
+      const commonPaths = ['/opt/homebrew/bin/yt-dlp', '/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp'];
+      for (const p of commonPaths) {
+        if (fs.existsSync(p)) {
+          try {
+            execSync(`"${p}" --version`, { stdio: 'ignore' });
+            console.log(`[System Check] yt-dlp resolved at common macOS path: ${p}`);
+            YTDLP_PATH = p;
+            status.ytDlp = 'ready';
+            resolvedGlobal = true;
+            break;
+          } catch (e) {}
+        }
+      }
+    }
+
+    if (!resolvedGlobal) {
+      execSync('yt-dlp --version', { stdio: 'ignore' });
+      console.log('[System Check] yt-dlp resolved via global installation.');
+      YTDLP_PATH = 'yt-dlp';
+      status.ytDlp = 'ready';
+    }
   } catch (err) {
     console.log('[System Check] yt-dlp not found globally. Checking local bin/ folder...');
     
@@ -85,6 +105,9 @@ export async function checkAndSetupDependencies() {
       try {
         if (process.platform !== 'win32') {
           fs.chmodSync(localPath, '755');
+          if (process.platform === 'darwin') {
+            try { execSync(`xattr -d com.apple.quarantine "${localPath}"`, { stdio: 'ignore' }); } catch (e) {}
+          }
         }
         execSync(`"${localPath}" --version`, { stdio: 'ignore' });
         console.log(`[System Check] Local yt-dlp found at: ${localPath}`);
@@ -107,13 +130,17 @@ export async function checkAndSetupDependencies() {
         if (process.platform === 'win32') {
           downloadUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe';
         } else if (process.platform === 'darwin') {
-          downloadUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos';
+          // Use the shebang-based Python script instead of yt-dlp_macos to avoid PyInstaller 30s decompression delay on macOS
+          downloadUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
         }
 
         await downloadFile(downloadUrl, localPath);
         
         if (process.platform !== 'win32') {
           fs.chmodSync(localPath, '755');
+          if (process.platform === 'darwin') {
+            try { execSync(`xattr -d com.apple.quarantine "${localPath}"`, { stdio: 'ignore' }); } catch (e) {}
+          }
         }
 
         // Final verification of downloaded binary

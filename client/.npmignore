@@ -1,0 +1,2 @@
+# Ignore local development dependencies
+node_modules/

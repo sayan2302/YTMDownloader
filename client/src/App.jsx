@@ -20,7 +20,7 @@ function App() {
   }, [activeTab]);
 
   const [outputDir, setOutputDir] = useState(() => {
-    return localStorage.getItem('ytmd_output_dir') || '/Users/sayan/Desktop';
+    return localStorage.getItem('ytmd_output_dir') || '';
   });
   const [searchQueryPreset, setSearchQueryPreset] = useState('');
   const { downloads, startDownload, startBulkDownload, clearQueue } = useDownload();
@@ -37,6 +37,9 @@ function App() {
       if (res.ok) {
         const data = await res.json();
         setSystemStatus(data);
+        if (data.defaultOutputDir && !localStorage.getItem('ytmd_output_dir')) {
+          setOutputDir(data.defaultOutputDir);
+        }
         if (data.status === 'checking' || data.status === 'downloading') {
           setTimeout(checkSystem, 3000);
         }

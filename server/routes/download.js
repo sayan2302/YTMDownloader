@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import { downloadTrack } from '../services/downloadService.js';
 import { getLyricsText } from '../services/ytmusicService.js';
 import { FFMPEG_PATH, YTDLP_PATH } from '../utils/dependencyChecker.js';
+import { getDataDir } from '../utils/paths.js';
 
 const router = express.Router();
 
@@ -20,8 +21,8 @@ const MAX_CONCURRENT = 3;
 let isQueuePaused = false;
 let queueSaveTimeout = null;
 
-const QUEUE_FILE = path.join(process.cwd(), 'queue.json');
-const QUEUE_FILE_TEMP = path.join(process.cwd(), 'queue.temp.json');
+const QUEUE_FILE = path.join(getDataDir(), 'queue.json');
+const QUEUE_FILE_TEMP = path.join(getDataDir(), 'queue.temp.json');
 
 // ---------------------------------------------------------
 // Disk Persistence
