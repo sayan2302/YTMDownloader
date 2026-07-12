@@ -1,0 +1,174 @@
+import { useState, useRef } from 'react';
+import { Settings, FolderOpen, Check, Trash2, Info } from 'lucide-react';
+import './SettingsPanel.css';
+
+export default function SettingsPanel({ outputDir, onSave }) {
+  const [dir, setDir] = useState(outputDir);
+  const [downloadLyrics, setDownloadLyrics] = useState(() => {
+    return localStorage.getItem('ytmd_download_lyrics') !== 'false';
+  });
+  const [isBrowsing, setIsBrowsing] = useState(false);
+  const [showSavedMsg, setShowSavedMsg] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [showClearedMsg, setShowClearedMsg] = useState(false);
+  const savedMsgTimeoutRef = useRef(null);
+
+  const triggerSavedIndicator = () => {
+    if (savedMsgTimeoutRef.current) {
+      clearTimeout(savedMsgTimeoutRef.current);
+    }
+    setShowSavedMsg(true);
+    savedMsgTimeoutRef.current = setTimeout(() => {
+      setShowSavedMsg(false);
+    }, 1500);
+  };
+
+  const handleBrowse = async () => {
+    setIsBrowsing(true);
+    try {
+      const res = await fetch('/api/browse');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.path) {
+          setDir(data.path);
+          onSave(data.path);
+          triggerSavedIndicator();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to browse for folder', err);
+    } finally {
+      setIsBrowsing(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    setIsClearing(true);
+    try {
+      const res = await fetch('/api/download/clear-cache', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to clear cache');
+      setShowClearedMsg(true);
+      setTimeout(() => {
+        setShowClearedMsg(false);
+      }, 3000);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setDir(e.target.value);
+  };
+
+  const handleInputBlur = () => {
+    if (dir !== outputDir) {
+      onSave(dir);
+      triggerSavedIndicator();
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.target.blur();
+    }
+  };
+
+  return (
+    <div className="settings-tab-container">
+      <div className="settings-card liquid-glass" style={{ position: 'relative' }}>
+        <span className={`saved-success-msg ${showSavedMsg ? 'visible' : ''}`}>
+          <Check size={16} /> Auto-saved
+        </span>
+        
+        <div className="settings-form">
+          <div className="form-group">
+            <label htmlFor="outputDir" className="label-with-info">
+              Download Directory
+              <div className="tooltip-container">
+                <Info size={14} className="info-icon" />
+                <span className="tooltip-text">Select where your downloaded FLAC / lossy files will be saved on your system.</span>
+              </div>
+            </label>
+            <div className="input-with-button">
+              <input
+                id="outputDir"
+                type="text"
+                value={dir}
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                onKeyDown={handleKeyDown}
+                placeholder="/Users/sayan/Desktop"
+              />
+              <button 
+                type="button" 
+                className="btn-browse" 
+                onClick={handleBrowse}
+                disabled={isBrowsing}
+                title="Browse directories"
+              >
+                {isBrowsing ? '...' : <FolderOpen size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-group toggle-group">
+            <div className="toggle-row">
+              <span className="toggle-label-text label-with-info">
+                Download & Embed Lyrics
+                <div className="tooltip-container">
+                  <Info size={14} className="info-icon" />
+                  <span className="tooltip-text">Fetches lyrics from YouTube Music and embeds them into metadata tags inside the audio track.</span>
+                </div>
+              </span>
+              <label className="toggle-switch">
+                <input
+                  id="downloadLyrics"
+                  type="checkbox"
+                  checked={downloadLyrics}
+                  onChange={e => {
+                    const val = e.target.checked;
+                    setDownloadLyrics(val);
+                    localStorage.setItem('ytmd_download_lyrics', val ? 'true' : 'false');
+                    triggerSavedIndicator();
+                  }}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div className="settings-divider" />
+
+          <div className="form-group cache-group">
+            <label className="label-with-info">
+              Cache & History
+              <div className="tooltip-container">
+                <Info size={14} className="info-icon" />
+                <span className="tooltip-text">Resets the local YouTube decipher cache (helps fix 403 Forbidden errors) and clears completed or failed items from download history.</span>
+              </div>
+            </label>
+            <div className="cache-action-row">
+              <button 
+                type="button" 
+                className="btn-danger" 
+                onClick={handleClearCache}
+                disabled={isClearing}
+                title="Resets yt-dlp decipher caches and clears completed/failed items from memory"
+              >
+                <Trash2 size={16} /> {isClearing ? 'Clearing Cache...' : 'Clear Cache & History'}
+              </button>
+              {showClearedMsg && (
+                <span className="cleared-success-msg">
+                  <Check size={16} /> Cache cleared!
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

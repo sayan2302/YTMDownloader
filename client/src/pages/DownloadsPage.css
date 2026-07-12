@@ -1,0 +1,37 @@
+.downloads-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.downloads-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  padding-bottom: 0.25rem;
+}
+
+.history-section .section-title {
+  color: var(--text-secondary);
+}
+
+.downloads-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .downloads-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+

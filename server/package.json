@@ -1,0 +1,14 @@
+{
+  "name": "ytm-downloader-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5",
+    "ytmusic-api": "^5.0.0",
+    "ffmpeg-static": "^5.2.0"
+  }
+}

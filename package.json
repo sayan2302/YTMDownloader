@@ -1,0 +1,10 @@
+{
+  "name": "ytm-downloader-root",
+  "version": "1.0.0",
+  "description": "Root package to run both client and server",
+  "scripts": {
+    "start": "npx concurrently \"npm run start --prefix server\" \"npm run dev --prefix client\"",
+    "dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "install-all": "npm install --prefix server && npm install --prefix client"
+  }
+}
