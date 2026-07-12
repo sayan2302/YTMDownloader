@@ -47,22 +47,30 @@ async function run() {
     const url = `http://127.0.0.1:${port}`;
     console.log(`Opening browser to ${url}`);
   
-  // Use macOS 'open' utility to launch default browser
-  const opener = spawn('open', [url]);
-  opener.on('error', (err) => {
-    console.error('Failed to open browser:', err);
-  });
-}, 1500);
+    // Launch default browser based on the operating system
+    let opener;
+    if (process.platform === 'darwin') {
+      opener = spawn('open', [url]);
+    } else if (process.platform === 'win32') {
+      opener = spawn('cmd', ['/c', 'start', '""', url], { shell: true });
+    } else {
+      opener = spawn('xdg-open', [url]);
+    }
 
-// Ensure the backend process is killed when the CLI process exits
-process.on('SIGINT', () => {
-  server.kill('SIGINT');
-  process.exit(0);
-});
-process.on('SIGTERM', () => {
-  server.kill('SIGTERM');
-  process.exit(0);
-});
+    opener.on('error', (err) => {
+      console.error('Failed to open browser:', err);
+    });
+  }, 1500);
+
+  // Ensure the backend process is killed when the CLI process exits
+  process.on('SIGINT', () => {
+    server.kill('SIGINT');
+    process.exit(0);
+  });
+  process.on('SIGTERM', () => {
+    server.kill('SIGTERM');
+    process.exit(0);
+  });
 }
 
 run();
