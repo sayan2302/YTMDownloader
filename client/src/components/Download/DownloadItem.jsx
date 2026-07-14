@@ -1,7 +1,7 @@
 import { Music, CheckCircle2, AlertCircle, Loader2, Clock } from 'lucide-react';
 import './DownloadItem.css';
 
-export default function DownloadItem({ download, onPlay, isCurrentlyPlaying, onSearchAlternative }) {
+export default function DownloadItem({ download, onPlay, isCurrentlyPlaying, onSearchAlternative, onRetry }) {
   const { title, artist, album, thumbnail, status, percent, speed, eta, error } = download;
 
   const isClickable = status === 'completed';
@@ -82,17 +82,30 @@ export default function DownloadItem({ download, onPlay, isCurrentlyPlaying, onS
         {status === 'error' && (
           <div className="dl-error-container">
             <span className="dl-error" title={error}>{error || 'Failed to download'}</span>
-            <button 
-              className="dl-search-alternative-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onSearchAlternative) {
-                  onSearchAlternative(`${title} ${artist}`);
-                }
-              }}
-            >
-              Search Alternative
-            </button>
+            <div className="dl-action-buttons">
+              <button 
+                className="dl-action-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onRetry) {
+                    onRetry(download);
+                  }
+                }}
+              >
+                Retry
+              </button>
+              <button 
+                className="dl-action-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSearchAlternative) {
+                    onSearchAlternative(`${title} ${artist}`);
+                  }
+                }}
+              >
+                Search Alternative
+              </button>
+            </div>
           </div>
         )}
       </div>

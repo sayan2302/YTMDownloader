@@ -126,7 +126,7 @@ export async function checkAndSetupDependencies() {
         status.ytDlp = 'downloading';
         console.log('[System Check] Downloading yt-dlp from GitHub...');
 
-        let downloadUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
+        let downloadUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux';
         if (process.platform === 'win32') {
           downloadUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe';
         } else if (process.platform === 'darwin') {

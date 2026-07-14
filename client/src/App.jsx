@@ -4,6 +4,7 @@ import SearchPage from './pages/SearchPage';
 import PlaylistPage from './pages/PlaylistPage';
 import DownloadsPage from './pages/DownloadsPage';
 import SettingsPanel from './components/Settings/SettingsPanel';
+import AboutPage from './pages/AboutPage';
 import FlyingThumbnail from './components/Download/FlyingThumbnail';
 import AudioPlayer from './components/Player/AudioPlayer';
 import { useDownload } from './hooks/useDownload';
@@ -184,10 +185,14 @@ function App() {
             currentSong={player.currentSong} 
             onSearchAlternative={handleSearchAlternative}
             onClearQueue={clearQueue}
+            onRetry={(dl) => startDownload(dl, outputDir)}
           />
         </div>
         <div style={{ display: activeTab === 'settings' ? 'block' : 'none' }}>
           <SettingsPanel outputDir={outputDir} onSave={handleSaveOutputDir} />
+        </div>
+        <div style={{ display: activeTab === 'about' ? 'block' : 'none' }}>
+          <AboutPage systemStatus={systemStatus} />
         </div>
       </main>
       

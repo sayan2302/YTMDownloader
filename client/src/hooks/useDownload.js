@@ -39,6 +39,7 @@ export function useDownload() {
   const startDownload = useCallback(async (song, outputDir) => {
     try {
       const downloadLyrics = localStorage.getItem('ytmd_download_lyrics') !== 'false';
+      const audioFormat = localStorage.getItem('ytmd_audio_format') || 'm4a';
       const res = await fetch('/api/download', {
         method: 'POST',
         headers: {
@@ -51,7 +52,8 @@ export function useDownload() {
           album: song.album,
           thumbnail: song.thumbnail,
           outputDir,
-          downloadLyrics
+          downloadLyrics,
+          audioFormat
         })
       });
 
@@ -70,6 +72,7 @@ export function useDownload() {
   const startBulkDownload = useCallback(async (songs, outputDir) => {
     try {
       const downloadLyrics = localStorage.getItem('ytmd_download_lyrics') !== 'false';
+      const audioFormat = localStorage.getItem('ytmd_audio_format') || 'm4a';
       const res = await fetch('/api/download/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,7 +85,8 @@ export function useDownload() {
             thumbnail: s.thumbnail
           })),
           outputDir,
-          downloadLyrics
+          downloadLyrics,
+          audioFormat
         })
       });
       if (!res.ok) {

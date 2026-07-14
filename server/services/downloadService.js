@@ -40,7 +40,7 @@ function cleanupTempFiles(outputDir, title) {
       // Check if file prefix matches the sanitized title
       if (file.startsWith(sanitizedTitle)) {
         const ext = path.extname(file).toLowerCase();
-        if (tempExtensions.includes(ext) || file.endsWith('.temp.webp') || file.endsWith('.m4a.part')) {
+        if (tempExtensions.includes(ext) || file.endsWith('.temp.webp') || file.endsWith('.m4a.part') || file.endsWith('.mp3.part')) {
           const fullPath = path.join(outputDir, file);
           if (fs.existsSync(fullPath)) {
             fs.unlinkSync(fullPath);
@@ -54,7 +54,7 @@ function cleanupTempFiles(outputDir, title) {
   }
 }
 
-export function downloadTrack(videoId, title, outputDir, onProgress, onComplete, onError) {
+export function downloadTrack(videoId, title, outputDir, audioFormat, onProgress, onComplete, onError) {
   // Ensure output directory exists
   if (!fs.existsSync(outputDir)) {
     try {
@@ -68,9 +68,9 @@ export function downloadTrack(videoId, title, outputDir, onProgress, onComplete,
   const args = [
     '--no-cache-dir',
     '--extractor-args', 'youtube:player_client=android_vr,web,mweb',
-    '-f', 'bestaudio[ext=m4a]/bestaudio',
+    '-f', 'bestaudio',
     '-x',
-    '--audio-format', 'm4a',
+    '--audio-format', audioFormat,
     '--embed-metadata',
     '--embed-thumbnail',
     '--progress-template', '%(progress)j',

@@ -1,6 +1,70 @@
 import YTMusic from 'ytmusic-api';
 
+// Helper to extract the correct continuation token from YouTube Music responses
+function getContinuationToken(data) {
+  if (!data) return null;
+  const findToken = (obj) => {
+    if (obj && typeof obj === 'object') {
+      if (obj.continuationItemRenderer) {
+        const endpoint = obj.continuationItemRenderer.continuationEndpoint;
+        if (endpoint && endpoint.continuationCommand && endpoint.continuationCommand.token) {
+          return endpoint.continuationCommand.token;
+        }
+      }
+      for (const key of Object.keys(obj)) {
+        const res = findToken(obj[key]);
+        if (res) return res;
+      }
+    }
+    return null;
+  };
+  return findToken(data);
+}
+
+// Helper to fix missing playNavigationEndpoint on greyed-out playlist items
+const fixPlaylistItems = (obj) => {
+  if (!obj || typeof obj !== 'object') return;
+  
+  if (obj.musicResponsiveListItemRenderer) {
+    const renderer = obj.musicResponsiveListItemRenderer;
+    if (renderer.playlistItemData && renderer.playlistItemData.videoId) {
+      if (!renderer.playNavigationEndpoint) {
+        renderer.playNavigationEndpoint = {
+          videoId: renderer.playlistItemData.videoId
+        };
+      }
+    }
+  }
+  
+  for (const key of Object.keys(obj)) {
+    fixPlaylistItems(obj[key]);
+  }
+};
+
 const ytmusic = new YTMusic();
+
+// Monkey-patch constructRequest to fix the 100-track limit on large playlists,
+// and to restore items that would otherwise be filtered out by the package parser
+// because they are greyed out or use custom image domains.
+const originalConstructRequest = ytmusic.constructRequest.bind(ytmusic);
+ytmusic.constructRequest = async function(endpoint, body = {}, query = {}) {
+  const data = await originalConstructRequest(endpoint, body, query);
+  
+  if (endpoint === 'browse') {
+    // Inject missing playNavigationEndpoint for items with valid videoIds
+    fixPlaylistItems(data);
+    
+    const correctToken = getContinuationToken(data);
+    if (correctToken) {
+      data.continuation = correctToken;
+    } else {
+      delete data.continuation;
+      if (data.continuations) delete data.continuations;
+    }
+  }
+  
+  return data;
+};
 let isInitialized = false;
 let initializing = null;
 
@@ -130,5 +194,36 @@ export async function getLyricsText(videoId) {
     console.warn(`[ytmusicService] Lyrics not available for video ${videoId}:`, error.message);
     return null;
   }
+}
+
+export async function getUpNextSongs(videoId) {
+  await ensureInitialized();
+  try {
+    const results = await ytmusic.getUpNexts(videoId);
+    return results.map(result => ({
+      videoId: result.videoId,
+      title: result.title,
+      artist: result.artists || 'Unknown Artist',
+      album: null,
+      duration: parseDurationToSeconds(result.duration),
+      thumbnail: result.thumbnail || null
+    }));
+  } catch (error) {
+    console.error('ytmusicService getUpNexts error:', error);
+    throw new Error('Failed to get recommendations');
+  }
+}
+
+function parseDurationToSeconds(durationStr) {
+  if (!durationStr || typeof durationStr !== 'string') return 0;
+  const parts = durationStr.split(':').map(Number);
+  if (parts.some(isNaN)) return 0;
+  
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  } else if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  return 0;
 }
 

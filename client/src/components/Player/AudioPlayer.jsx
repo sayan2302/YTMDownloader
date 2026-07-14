@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Music } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Music, Infinity, ListMusic, Trash2 } from 'lucide-react';
 import './AudioPlayer.css';
 
 function formatTime(seconds) {
@@ -27,11 +27,29 @@ export default function AudioPlayer({ player }) {
     stop,
     queue,
     playNext,
-    playPrevious
+    playPrevious,
+    playQueueTrack,
+    clearQueue,
+    autoplay,
+    setAutoplay
   } = player;
 
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState(0);
+  const [showQueue, setShowQueue] = useState(false);
+  
+  const activeItemRef = useRef(null);
+
+  // Scroll active track in queue into view when opening
+  useEffect(() => {
+    if (showQueue && activeItemRef.current) {
+      setTimeout(() => {
+        if (activeItemRef.current) {
+          activeItemRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 100);
+    }
+  }, [showQueue, currentSong]);
 
   // Use song duration if audio duration is not available (common for streams)
   const displayDuration = (audioDuration && isFinite(audioDuration)) 
@@ -55,9 +73,62 @@ export default function AudioPlayer({ player }) {
     setIsDragging(true);
   };
 
+  const currentIndex = queue.findIndex(item => item.videoId === currentSong?.videoId);
+  const nextSong = currentIndex !== -1 && currentIndex < queue.length - 1 ? queue[currentIndex + 1] : null;
+
   return (
-    <div className={`audio-player liquid-glass ${isPlayerVisible && currentSong ? 'player-enter' : 'player-exit'}`}>
+    <div className={`audio-player ${isPlayerVisible && currentSong ? 'player-enter' : 'player-exit'}`}>
       <audio ref={audioRef} src={audioUrl || undefined} style={{ display: 'none' }} />
+
+      {currentSong && showQueue && (
+        <div className="player-queue-panel">
+          <div className="queue-header">
+            <h3 className="queue-title">Play Queue ({queue.length})</h3>
+            <button className="queue-clear-btn" onClick={clearQueue} title="Clear upcoming recommendations">
+              <Trash2 size={14} />
+              <span>Clear Queue</span>
+            </button>
+          </div>
+          <div className="queue-list">
+            {queue.map((item, index) => {
+              const isActive = item.videoId === currentSong?.videoId;
+              return (
+                <div 
+                  key={`${item.videoId}-${index}`} 
+                  ref={isActive ? activeItemRef : null}
+                  className={`queue-item ${isActive ? 'active' : ''}`}
+                  onClick={() => playQueueTrack(index)}
+                  title={`Play: ${item.title}`}
+                >
+                  <div className="queue-item-thumb-container">
+                    {item.thumbnail ? (
+                      <img src={item.thumbnail} alt="" className="queue-item-thumb" />
+                    ) : (
+                      <div className="queue-item-thumb-placeholder"><Music size={14} /></div>
+                    )}
+                    {isActive && (
+                      <div className="queue-playing-overlay">
+                        <div className="equalizer-overlay active">
+                          <div className="bar bar1"></div>
+                          <div className="bar bar2"></div>
+                          <div className="bar bar3"></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="queue-item-meta">
+                    <div className="queue-item-title">{item.title}</div>
+                    <div className="queue-item-artist">{item.artist}</div>
+                  </div>
+                  <div className="queue-item-duration">
+                    {formatTime(item.duration)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {currentSong && (
         <div className="player-content">
@@ -100,8 +171,8 @@ export default function AudioPlayer({ player }) {
             <button 
               className="player-btn" 
               onClick={playNext} 
-              disabled={queue.length <= 1}
-              title={queue.length <= 1 ? "Next (No queue)" : "Next track"}
+              disabled={queue.length <= 1 && !autoplay}
+              title={queue.length <= 1 && !autoplay ? "Next (No queue)" : "Next track"}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
             </button>
@@ -126,9 +197,30 @@ export default function AudioPlayer({ player }) {
             />
             <span className="time-display">{formatTime(displayDuration)}</span>
           </div>
+          {nextSong && (
+            <div className="player-up-next-preview" title="Up Next">
+              Up Next: <span className="up-next-title">{nextSong.title}</span> • {nextSong.artist}
+            </div>
+          )}
         </div>
 
         <div className="player-right">
+          <button 
+            className={`player-autoplay-btn ${autoplay ? 'active' : ''}`} 
+            onClick={() => setAutoplay(!autoplay)}
+            title={`Autoplay recommendations: ${autoplay ? 'ON' : 'OFF'}`}
+          >
+            <Infinity size={20} />
+          </button>
+
+          <button 
+            className={`player-queue-toggle ${showQueue ? 'active' : ''}`} 
+            onClick={() => setShowQueue(!showQueue)}
+            title="View play queue"
+          >
+            <ListMusic size={20} />
+          </button>
+
           <div className="player-volume-container">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
             <input 

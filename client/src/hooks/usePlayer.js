@@ -11,14 +11,95 @@ export function usePlayer() {
   const [isPlayerVisible, setIsPlayerVisible] = useState(false);
   const [queue, setQueue] = useState([]);
   
+  const [autoplay, setAutoplayState] = useState(() => {
+    const saved = localStorage.getItem('ytm-autoplay');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
   const audioRef = useRef(null);
   const onTrackEndedRef = useRef(null);
 
-  // playNext definition
+  const setAutoplay = useCallback((val) => {
+    setAutoplayState(val);
+    localStorage.setItem('ytm-autoplay', JSON.stringify(val));
+  }, []);
+
+  const fetchRecommendations = useCallback(async (songId) => {
+    try {
+      const res = await fetch(`/api/search/up-next/${songId}`);
+      if (!res.ok) throw new Error('Failed to fetch recommendations');
+      const data = await res.json();
+      return data.results || [];
+    } catch (err) {
+      console.warn('[Player] Failed to load recommendations:', err.message);
+      return [];
+    }
+  }, []);
+
+  const play = useCallback((song, srcType, queueList = [], localFilePath = null) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
+    }
+
+    setCurrentSong(song);
+    setSource(srcType);
+    setQueue(queueList);
+    setIsPlayerVisible(true);
+    setCurrentTime(0);
+    setDuration(0);
+
+    let newUrl = '';
+    if (srcType === 'stream') {
+      newUrl = `/api/stream/${song.videoId}`;
+    } else if (srcType === 'local' && localFilePath) {
+      newUrl = `/api/play-local?path=${encodeURIComponent(localFilePath)}`;
+    }
+
+    setAudioUrl(newUrl);
+
+    // If it's a single track play and autoplay is enabled, pre-fetch recommendations
+    const isSingleTrack = queueList.length <= 1;
+    if (isSingleTrack && autoplay && srcType === 'stream') {
+      fetchRecommendations(song.videoId).then(recs => {
+        if (recs && recs.length > 0) {
+          setCurrentSong(current => {
+            if (current && current.videoId === song.videoId) {
+              setQueue([song, ...recs]);
+            }
+            return current;
+          });
+        }
+      });
+    }
+
+    setTimeout(() => {
+      if (audioRef.current) {
+        audioRef.current.play().catch(err => console.error("Auto-play prevented", err));
+      }
+    }, 50);
+  }, [autoplay, fetchRecommendations]);
+
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
     const currentIndex = queue.findIndex(item => item.videoId === currentSong?.videoId);
     if (currentIndex === -1) return;
+    
+    const isLastSong = currentIndex === queue.length - 1;
+    if (isLastSong && autoplay && currentSong) {
+      fetchRecommendations(currentSong.videoId).then(recs => {
+        if (recs && recs.length > 0) {
+          setQueue(prevQueue => {
+            const newQueue = [...prevQueue, ...recs];
+            const nextSong = recs[0];
+            play(nextSong, 'stream', newQueue);
+            return newQueue;
+          });
+        }
+      });
+      return;
+    }
     
     const nextIndex = (currentIndex + 1) % queue.length;
     const nextSong = queue[nextIndex];
@@ -27,7 +108,7 @@ export function usePlayer() {
     const filePath = nextSong.filePath;
     
     play(nextSong, isLocal ? 'local' : 'stream', queue, filePath);
-  }, [queue, currentSong]);
+  }, [queue, currentSong, autoplay, fetchRecommendations, play]);
 
   const playPrevious = useCallback(() => {
     if (queue.length === 0) return;
@@ -41,7 +122,15 @@ export function usePlayer() {
     const filePath = prevSong.filePath;
     
     play(prevSong, isLocal ? 'local' : 'stream', queue, filePath);
-  }, [queue, currentSong]);
+  }, [queue, currentSong, play]);
+
+  const playQueueTrack = useCallback((index) => {
+    if (index < 0 || index >= queue.length) return;
+    const track = queue[index];
+    const isLocal = !!(track.filePath || track.status === 'completed');
+    const filePath = track.filePath;
+    play(track, isLocal ? 'local' : 'stream', queue, filePath);
+  }, [queue, play]);
 
   // Keep track-ended reference up-to-date to avoid effect re-binding cycles
   useEffect(() => {
@@ -93,38 +182,6 @@ export function usePlayer() {
     };
   }, [audioRef, volume, audioUrl]);
 
-  const play = useCallback((song, srcType, queueList = [], localFilePath = null) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
-    }
-
-    setCurrentSong(song);
-    setSource(srcType);
-    setQueue(queueList);
-    setIsPlayerVisible(true);
-    setCurrentTime(0);
-    setDuration(0);
-
-    let newUrl = '';
-    if (srcType === 'stream') {
-      newUrl = `/api/stream/${song.videoId}`;
-    } else if (srcType === 'local' && localFilePath) {
-      newUrl = `/api/play-local?path=${encodeURIComponent(localFilePath)}`;
-    }
-
-    setAudioUrl(newUrl);
-
-    // When URL changes, React will re-render the <audio src={newUrl}>
-    // We need to wait for the DOM to update before calling play()
-    setTimeout(() => {
-      if (audioRef.current) {
-        audioRef.current.play().catch(err => console.error("Auto-play prevented", err));
-      }
-    }, 50);
-  }, []);
-
   const pause = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -165,6 +222,14 @@ export function usePlayer() {
     setIsPlaying(false);
   }, []);
 
+  const clearQueue = useCallback(() => {
+    if (currentSong) {
+      setQueue([currentSong]);
+    } else {
+      stop();
+    }
+  }, [currentSong, stop]);
+
   return {
     audioRef,
     currentSong,
@@ -178,11 +243,15 @@ export function usePlayer() {
     queue,
     playNext,
     playPrevious,
+    playQueueTrack,
+    clearQueue,
     play,
     pause,
     resume,
     seek,
     setVolume,
-    stop
+    stop,
+    autoplay,
+    setAutoplay
   };
 }

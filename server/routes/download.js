@@ -108,7 +108,7 @@ async function processQueue() {
 
   activeDownloads++;
   const task = downloadQueue.shift();
-  const { downloadId, videoId, title, outputDir, downloadLyrics } = task;
+  const { downloadId, videoId, title, outputDir, downloadLyrics, audioFormat = 'm4a' } = task;
 
   // Add 1.5s jitter before starting
   await new Promise(resolve => setTimeout(resolve, 1500));
@@ -128,13 +128,13 @@ async function processQueue() {
     const dl = downloadsMap.get(downloadId);
     if (dl) {
       const sanitizedTitle = dl.title.replace(/[\\/:*?"<>|]/g, '_');
-      const finalPath = path.join(outputDir, `${sanitizedTitle}.m4a`);
+      const finalPath = path.join(outputDir, `${sanitizedTitle}.${audioFormat}`);
       
       if (downloadLyrics) {
         try {
           const lyricsText = await getLyricsText(videoId);
           if (lyricsText) {
-            await embedLyricsToM4A(finalPath, lyricsText);
+            await embedLyrics(finalPath, lyricsText, audioFormat);
           }
         } catch (err) {
           console.error(`[Lyrics] Failed to download or embed lyrics for track: ${dl.title}`, err);
@@ -187,38 +187,57 @@ async function processQueue() {
     }
   }
 
-  downloadTrack(videoId, title, outputDir, onProgress, onComplete, onError);
+  downloadTrack(videoId, title, outputDir, audioFormat, onProgress, onComplete, onError);
 }
 
 // ---------------------------------------------------------
 // Endpoints
 // ---------------------------------------------------------
 router.post('/', (req, res) => {
-  const { videoId, title, artist, album, thumbnail, outputDir, downloadLyrics } = req.body;
+  const { videoId, title, artist, album, thumbnail, outputDir, downloadLyrics, audioFormat } = req.body;
   if (!videoId || !outputDir) return res.status(400).json({ error: 'Missing videoId or outputDir' });
 
-  // Duplicate Check
+  // Duplicate Check & Recycle
+  let recycledId = null;
   for (const dl of downloadsMap.values()) {
-    if (dl.videoId === videoId && (dl.status === 'queued' || dl.status === 'downloading')) {
-      return res.json({ downloadId: dl.downloadId, message: 'Already queued or downloading' });
+    if (dl.videoId === videoId) {
+      if (dl.status === 'queued' || dl.status === 'downloading') {
+        return res.json({ downloadId: dl.downloadId, message: 'Already queued or downloading' });
+      } else if (dl.status === 'error') {
+        recycledId = dl.downloadId;
+      }
     }
   }
 
-  const downloadId = crypto.randomUUID();
+  const formatToUse = audioFormat || 'm4a';
+  const safeTitle = (title || 'Unknown Title').replace(/[\\/:*?"<>|]/g, '_');
+  const expectedPath = path.join(outputDir, `${safeTitle}.${formatToUse}`);
+  
+  const downloadId = recycledId || crypto.randomUUID();
+
+  if (fs.existsSync(expectedPath)) {
+    downloadsMap.set(downloadId, {
+      downloadId, videoId, title: title || 'Unknown Title', artist: artist || 'Unknown Artist',
+      album: album || null, thumbnail: thumbnail || null, status: 'completed', percent: '100%', speed: '', eta: '', filePath: expectedPath, error: null
+    });
+    markDirty(downloadId);
+    return res.json({ downloadId, message: 'Already downloaded' });
+  }
+
   downloadsMap.set(downloadId, {
     downloadId, videoId, title: title || 'Unknown Title', artist: artist || 'Unknown Artist',
-    album: album || null, thumbnail: thumbnail || null, status: 'queued', percent: '0%', speed: '', eta: ''
+    album: album || null, thumbnail: thumbnail || null, status: 'queued', percent: '0%', speed: '', eta: '', error: null
   });
   
   markDirty(downloadId);
-  downloadQueue.push({ downloadId, videoId, title: title || 'Unknown Title', outputDir, downloadLyrics });
+  downloadQueue.push({ downloadId, videoId, title: title || 'Unknown Title', outputDir, downloadLyrics, audioFormat: formatToUse });
   res.json({ downloadId, message: 'Download queued' });
   
   processQueue();
 });
 
 router.post('/bulk', (req, res) => {
-  const { songs, outputDir, downloadLyrics } = req.body;
+  const { songs, outputDir, downloadLyrics, audioFormat } = req.body;
   if (!Array.isArray(songs) || !outputDir) return res.status(400).json({ error: 'Missing songs array or outputDir' });
 
   // Pre-flight check
@@ -228,27 +247,47 @@ router.post('/bulk', (req, res) => {
   }
 
   const queuedIds = [];
+  const formatToUse = audioFormat || 'm4a';
+
   for (const song of songs) {
     const { videoId, title, artist, album, thumbnail } = song;
     if (!videoId) continue;
     
     // Duplicate Check
     let isDupe = false;
+    let recycledId = null;
     for (const dl of downloadsMap.values()) {
-      if (dl.videoId === videoId && (dl.status === 'queued' || dl.status === 'downloading')) {
-        isDupe = true; break;
+      if (dl.videoId === videoId) {
+        if (dl.status === 'queued' || dl.status === 'downloading') {
+          isDupe = true; break;
+        } else if (dl.status === 'error') {
+          recycledId = dl.downloadId;
+        }
       }
     }
     if (isDupe) continue;
 
-    const downloadId = crypto.randomUUID();
+    const safeTitle = (title || 'Unknown Title').replace(/[\\/:*?"<>|]/g, '_');
+    const expectedPath = path.join(outputDir, `${safeTitle}.${formatToUse}`);
+    const downloadId = recycledId || crypto.randomUUID();
+
+    if (fs.existsSync(expectedPath)) {
+      downloadsMap.set(downloadId, {
+        downloadId, videoId, title: title || 'Unknown Title', artist: artist || 'Unknown Artist',
+        album: album || null, thumbnail: thumbnail || null, status: 'completed', percent: '100%', speed: '', eta: '', filePath: expectedPath, error: null
+      });
+      markDirty(downloadId);
+      queuedIds.push(downloadId);
+      continue;
+    }
+
     downloadsMap.set(downloadId, {
       downloadId, videoId, title: title || 'Unknown Title', artist: artist || 'Unknown Artist',
-      album: album || null, thumbnail: thumbnail || null, status: 'queued', percent: '0%', speed: '', eta: ''
+      album: album || null, thumbnail: thumbnail || null, status: 'queued', percent: '0%', speed: '', eta: '', error: null
     });
     
     markDirty(downloadId);
-    downloadQueue.push({ downloadId, videoId, title: title || 'Unknown Title', outputDir, downloadLyrics });
+    downloadQueue.push({ downloadId, videoId, title: title || 'Unknown Title', outputDir, downloadLyrics, audioFormat: formatToUse });
     queuedIds.push(downloadId);
   }
 
@@ -312,9 +351,10 @@ router.get('/progress', (req, res) => {
 });
 
 // Helper at end
-function embedLyricsToM4A(filePath, lyricsText) {
+function embedLyrics(filePath, lyricsText, format = 'm4a') {
   return new Promise((resolve, reject) => {
-    const tempPath = filePath.replace(/\.m4a$/, '.temp.m4a');
+    const extRegex = new RegExp(`\\.${format}$`);
+    const tempPath = filePath.replace(extRegex, `.temp.${format}`);
     const args = ['-y', '-i', filePath, '-metadata', `lyrics=${lyricsText}`, '-c', 'copy', tempPath];
     const proc = spawn(FFMPEG_PATH, args);
     proc.on('close', (code) => {

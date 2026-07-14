@@ -10,9 +10,10 @@ router.get('/', (req, res) => {
     return res.status(400).json({ error: 'Missing file path' });
   }
 
-  // Very basic check to ensure it's playing an m4a file
-  if (!filePath.endsWith('.m4a')) {
-    return res.status(400).json({ error: 'Only .m4a files are supported' });
+  // Basic check to ensure it's playing a supported audio file
+  const ext = filePath.split('.').pop().toLowerCase();
+  if (ext !== 'm4a' && ext !== 'mp3') {
+    return res.status(400).json({ error: 'Only .m4a and .mp3 files are supported' });
   }
 
   if (!fs.existsSync(filePath)) {
@@ -22,6 +23,7 @@ router.get('/', (req, res) => {
   const stat = fs.statSync(filePath);
   const fileSize = stat.size;
   const range = req.headers.range;
+  const contentType = ext === 'mp3' ? 'audio/mpeg' : 'audio/mp4';
 
   if (range) {
     const parts = range.replace(/bytes=/, "").split("-");
@@ -34,14 +36,14 @@ router.get('/', (req, res) => {
       'Content-Range': `bytes ${start}-${end}/${fileSize}`,
       'Accept-Ranges': 'bytes',
       'Content-Length': chunksize,
-      'Content-Type': 'audio/mp4',
+      'Content-Type': contentType,
     });
     
     file.pipe(res);
   } else {
     res.writeHead(200, {
       'Content-Length': fileSize,
-      'Content-Type': 'audio/mp4',
+      'Content-Type': contentType,
     });
     fs.createReadStream(filePath).pipe(res);
   }

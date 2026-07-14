@@ -1,12 +1,10 @@
 {
   "name": "@supasayan/ytm",
-  "version": "1.0.7",
+  "version": "1.0.28",
   "description": "Root package to run both client and server",
   "main": "main.js",
   "productName": "YTM",
-  "bin": {
-    "ytm": "./bin/cli.js"
-  },
+  "bin": "bin/cli.js",
   "dependencies": {
     "express": "^4.21.0",
     "cors": "^2.8.5",

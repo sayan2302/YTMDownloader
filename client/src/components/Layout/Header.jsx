@@ -1,4 +1,4 @@
-import { Search, Music, Download, Settings } from 'lucide-react';
+import { Search, Music, Download, Settings, Info } from 'lucide-react';
 import './Header.css';
 
 export default function Header({ activeTab, onTabChange, activeDownloadCount = 0, downloadsTabRef }) {
@@ -41,6 +41,13 @@ export default function Header({ activeTab, onTabChange, activeDownloadCount = 0
           >
             <Settings size={18} className="tab-icon" />
             <span>Settings</span>
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'about' ? 'active' : ''}`}
+            onClick={() => onTabChange('about')}
+          >
+            <Info size={18} className="tab-icon" />
+            <span>About</span>
           </button>
         </nav>
       </div>
