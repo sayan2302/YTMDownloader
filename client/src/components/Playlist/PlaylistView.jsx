@@ -47,6 +47,20 @@ export default function PlaylistView({ playlist, isLoading, onDownloadAll, onDow
 
   if (!playlist) return null;
 
+  const handleDownloadAllClick = () => {
+    const remainingTracks = playlist.tracks.filter(song => {
+      const dlEntry = downloads ? Array.from(downloads.values()).find(d => d.videoId === song.videoId) : null;
+      return !song.downloaded && dlEntry?.status !== 'completed';
+    });
+    
+    if (remainingTracks.length === 0) {
+      alert("All tracks are already downloaded!");
+      return;
+    }
+    
+    onDownloadAll(remainingTracks);
+  };
+
   return (
     <div className="playlist-view liquid-glass">
       <div className="playlist-header">
@@ -56,7 +70,7 @@ export default function PlaylistView({ playlist, isLoading, onDownloadAll, onDow
         </div>
         <button 
           className="download-all-btn" 
-          onClick={() => onDownloadAll(playlist.tracks)}
+          onClick={handleDownloadAllClick}
         >
           ⬇ Download All
         </button>
@@ -90,8 +104,8 @@ export default function PlaylistView({ playlist, isLoading, onDownloadAll, onDow
                 song={song} 
                 onDownload={onDownloadSingle} 
                 onFlyAnimation={onFlyAnimation}
-                downloadStatus={dlEntry?.status || null}
-                downloadPercent={dlEntry?.percent || '0%'}
+                downloadStatus={dlEntry?.status || (song.downloaded ? 'completed' : null)}
+                downloadPercent={dlEntry?.percent || (song.downloaded ? '100%' : '0%')}
                 onPlay={(song, rect) => onPlay(song, rect, playlist.tracks)}
                 isCurrentlyPlaying={isPlaying}
               />

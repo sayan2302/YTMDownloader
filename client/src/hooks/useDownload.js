@@ -36,6 +36,27 @@ export function useDownload() {
     };
   }, []);
 
+  const syncDownloads = useCallback(async (dir) => {
+    const dirToUse = dir || localStorage.getItem('ytmd_output_dir');
+    if (!dirToUse) return;
+    try {
+      await fetch('/api/download/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outputDir: dirToUse })
+      });
+    } catch (err) {
+      console.error('Failed to sync downloads:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const savedDir = localStorage.getItem('ytmd_output_dir');
+    if (savedDir) {
+      syncDownloads(savedDir);
+    }
+  }, [syncDownloads]);
+
   const startDownload = useCallback(async (song, outputDir) => {
     try {
       const downloadLyrics = localStorage.getItem('ytmd_download_lyrics') !== 'false';
@@ -107,5 +128,5 @@ export function useDownload() {
     }
   }, []);
 
-  return { downloads, startDownload, startBulkDownload, clearQueue };
+  return { downloads, startDownload, startBulkDownload, clearQueue, syncDownloads };
 }

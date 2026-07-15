@@ -215,6 +215,10 @@ router.post('/', (req, res) => {
   
   const downloadId = recycledId || crypto.randomUUID();
 
+  if (recycledId) {
+    downloadsMap.delete(recycledId);
+  }
+
   if (fs.existsSync(expectedPath)) {
     downloadsMap.set(downloadId, {
       downloadId, videoId, title: title || 'Unknown Title', artist: artist || 'Unknown Artist',
@@ -271,6 +275,10 @@ router.post('/bulk', (req, res) => {
     const expectedPath = path.join(outputDir, `${safeTitle}.${formatToUse}`);
     const downloadId = recycledId || crypto.randomUUID();
 
+    if (recycledId) {
+      downloadsMap.delete(recycledId);
+    }
+
     if (fs.existsSync(expectedPath)) {
       downloadsMap.set(downloadId, {
         downloadId, videoId, title: title || 'Unknown Title', artist: artist || 'Unknown Artist',
@@ -293,6 +301,116 @@ router.post('/bulk', (req, res) => {
 
   res.json({ queuedIds, message: `${queuedIds.length} downloads queued` });
   processQueue();
+});
+
+export function syncDownloadDirectory(outputDir) {
+  if (!outputDir || !fs.existsSync(outputDir)) {
+    return;
+  }
+
+  const files = fs.readdirSync(outputDir);
+  const audioExtensions = ['.mp3', '.m4a'];
+  const filesOnDisk = [];
+
+  for (const file of files) {
+    const ext = path.extname(file).toLowerCase();
+    if (audioExtensions.includes(ext)) {
+      const baseName = path.basename(file, ext);
+      filesOnDisk.push({
+        fileName: file,
+        baseName,
+        ext,
+        filePath: path.join(outputDir, file)
+      });
+    }
+  }
+
+  const diskMap = new Map();
+  for (const f of filesOnDisk) {
+    diskMap.set(f.baseName.toLowerCase(), f);
+  }
+
+  let mapChanged = false;
+  for (const [id, dl] of downloadsMap.entries()) {
+    const sanitizedTitle = (dl.title || '').replace(/[\\/:*?"<>|]/g, '_');
+    const key = sanitizedTitle.toLowerCase();
+    const diskFile = diskMap.get(key);
+
+    if (diskFile) {
+      if (dl.status !== 'completed' || dl.filePath !== diskFile.filePath) {
+        dl.status = 'completed';
+        dl.percent = '100%';
+        dl.filePath = diskFile.filePath;
+        dl.error = null;
+        markDirty(id);
+        mapChanged = true;
+      }
+      diskMap.delete(key);
+    } else {
+      if (dl.status === 'completed') {
+        if (!dl.filePath || !fs.existsSync(dl.filePath)) {
+          dl.status = 'error';
+          dl.error = 'File not found on disk';
+          markDirty(id);
+          mapChanged = true;
+        }
+      } else if (dl.status === 'error' && dl.error === 'File not found on disk') {
+        if (dl.filePath && fs.existsSync(dl.filePath)) {
+          dl.status = 'completed';
+          dl.percent = '100%';
+          dl.error = null;
+          markDirty(id);
+          mapChanged = true;
+        }
+      }
+    }
+  }
+
+  for (const [key, diskFile] of diskMap.entries()) {
+    const downloadId = crypto.randomUUID();
+    const videoId = `local-${crypto.createHash('md5').update(diskFile.baseName).digest('hex')}`;
+    
+    downloadsMap.set(downloadId, {
+      downloadId,
+      videoId,
+      title: diskFile.baseName,
+      artist: 'Local File',
+      album: null,
+      thumbnail: null,
+      status: 'completed',
+      percent: '100%',
+      speed: '',
+      eta: '',
+      filePath: diskFile.filePath,
+      error: null
+    });
+    markDirty(downloadId);
+    mapChanged = true;
+  }
+
+  if (mapChanged) {
+    scheduleSave();
+    
+    const payload = JSON.stringify({ type: 'INITIAL', data: Array.from(downloadsMap.entries()) });
+    for (const client of sseClients) {
+      client.write(`data: ${payload}\n\n`);
+    }
+  }
+}
+
+router.post('/sync', (req, res) => {
+  const { outputDir } = req.body;
+  if (!outputDir) {
+    return res.status(400).json({ error: 'Missing outputDir' });
+  }
+
+  try {
+    syncDownloadDirectory(outputDir);
+    res.json({ message: 'Sync complete' });
+  } catch (err) {
+    console.error('[Sync] Sync failed:', err);
+    res.status(500).json({ error: 'Sync failed', details: err.message });
+  }
 });
 
 router.post('/clear-queue', (req, res) => {

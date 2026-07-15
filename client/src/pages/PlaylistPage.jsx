@@ -14,9 +14,13 @@ export default function PlaylistPage({ outputDir, onDownloadSingle, onBulkDownlo
     onDownloadSingle(song, outputDir);
   };
 
+  const handleFetch = (url) => {
+    fetchPlaylist(url, outputDir);
+  };
+
   return (
     <div className="playlist-page">
-      <PlaylistInput onFetch={fetchPlaylist} isLoading={isLoading} />
+      <PlaylistInput onFetch={handleFetch} isLoading={isLoading} />
       
       {error && (
         <div className="error-message">

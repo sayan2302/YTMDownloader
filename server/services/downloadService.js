@@ -65,6 +65,8 @@ export function downloadTrack(videoId, title, outputDir, audioFormat, onProgress
     }
   }
 
+  const sanitizedTitle = (title || 'Unknown Title').replace(/[\\/:*?"<>|]/g, '_');
+
   const args = [
     '--no-cache-dir',
     '--extractor-args', 'youtube:player_client=android_vr,web,mweb',
@@ -74,7 +76,7 @@ export function downloadTrack(videoId, title, outputDir, audioFormat, onProgress
     '--embed-metadata',
     '--embed-thumbnail',
     '--progress-template', '%(progress)j',
-    '-o', path.join(outputDir, '%(title)s.%(ext)s'),
+    '-o', path.join(outputDir, `${sanitizedTitle}.%(ext)s`),
     '--no-playlist',
     `https://music.youtube.com/watch?v=${videoId}`
   ];

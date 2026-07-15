@@ -24,7 +24,7 @@ function App() {
     return localStorage.getItem('ytmd_output_dir') || '';
   });
   const [searchQueryPreset, setSearchQueryPreset] = useState('');
-  const { downloads, startDownload, startBulkDownload, clearQueue } = useDownload();
+  const { downloads, startDownload, startBulkDownload, clearQueue, syncDownloads } = useDownload();
   const player = usePlayer();
 
   const [systemStatus, setSystemStatus] = useState({ status: 'checking', error: null });
@@ -59,7 +59,8 @@ function App() {
   const handleSaveOutputDir = useCallback((dir) => {
     setOutputDir(dir);
     localStorage.setItem('ytmd_output_dir', dir);
-  }, []);
+    syncDownloads(dir);
+  }, [syncDownloads]);
 
   const handleSearchAlternative = useCallback((query) => {
     setSearchQueryPreset(query);
