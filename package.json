@@ -1,6 +1,6 @@
 {
   "name": "@supasayan/ytm",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "description": "Root package to run both client and server",
   "main": "main.js",
   "productName": "YTM",
