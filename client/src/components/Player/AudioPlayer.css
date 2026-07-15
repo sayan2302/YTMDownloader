@@ -186,12 +186,85 @@ input[type=range]::-webkit-slider-runnable-track {
   transition: all var(--transition-fast);
 }
 
-.player-seekbar::-webkit-slider-runnable-track {
-  background: linear-gradient(to right, var(--accent-primary) var(--progress), var(--bg-tertiary) var(--progress));
+/* Seekbar at the top edge of the audio player */
+input[type=range].player-seekbar {
+  position: absolute !important;
+  top: -8px !important; /* centers it on the top border (half of its 16px height) */
+  left: 0 !important;
+  width: 100% !important;
+  height: 16px !important;
+  z-index: 210 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
 }
 
-.player-seekbar::-moz-range-track {
-  background: linear-gradient(to right, var(--accent-primary) var(--progress), var(--bg-tertiary) var(--progress));
+input[type=range].player-seekbar::-webkit-slider-runnable-track {
+  width: 100% !important;
+  height: 3px !important;
+  background: linear-gradient(to right, #ff0000 var(--progress), rgba(255, 255, 255, 0.15) var(--progress)) !important;
+  border-radius: 0 !important;
+  transition: height 0.1s ease !important;
+  border: none !important;
+}
+
+input[type=range].player-seekbar::-moz-range-track {
+  width: 100% !important;
+  height: 3px !important;
+  background: linear-gradient(to right, #ff0000 var(--progress), rgba(255, 255, 255, 0.15) var(--progress)) !important;
+  border-radius: 0 !important;
+  transition: height 0.1s ease !important;
+  border: none !important;
+}
+
+input[type=range].player-seekbar:hover::-webkit-slider-runnable-track {
+  height: 5px !important;
+}
+
+input[type=range].player-seekbar:hover::-moz-range-track {
+  height: 5px !important;
+}
+
+/* Custom Seekbar Thumb (Red, hidden by default, pops up on hover) */
+input[type=range].player-seekbar::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  height: 12px !important;
+  width: 12px !important;
+  border-radius: 50% !important;
+  background: #ff0000 !important;
+  margin-top: -4.5px !important; /* centers it on the track */
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5) !important;
+  transform: scale(0) !important;
+  opacity: 1 !important;
+  transition: transform 0.1s ease !important;
+}
+
+input[type=range].player-seekbar::-moz-range-thumb {
+  height: 12px !important;
+  width: 12px !important;
+  border-radius: 50% !important;
+  background: #ff0000 !important;
+  border: none !important;
+  transform: scale(0) !important;
+  opacity: 1 !important;
+  transition: transform 0.1s ease !important;
+}
+
+input[type=range].player-seekbar:hover::-webkit-slider-thumb,
+input[type=range].player-seekbar:active::-webkit-slider-thumb {
+  transform: scale(1) !important;
+}
+
+input[type=range].player-seekbar:hover::-moz-range-thumb,
+input[type=range].player-seekbar:active::-moz-range-thumb {
+  transform: scale(1) !important;
+}
+
+
+.player-time-display {
+  margin-left: 1rem;
+  font-size: 13px !important;
+  color: var(--text-secondary);
 }
 
 .player-volume::-webkit-slider-runnable-track {
@@ -540,4 +613,24 @@ input[type=range]:disabled {
     left: 0;
     width: 100%;
   }
+}
+
+/* Loading Spinner inside play/pause button */
+.player-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(15, 23, 42, 0.2);
+  border-radius: 50%;
+  border-top-color: rgba(15, 23, 42, 1);
+  animation: player-spin 0.8s linear infinite;
+}
+
+@keyframes player-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Active states for play controls (Shuffle & Repeat) */
+.player-control-shuffle.active,
+.player-control-repeat.active {
+  color: var(--accent-primary) !important;
 }

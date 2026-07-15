@@ -6,6 +6,7 @@ export function usePlayer() {
   const [audioUrl, setAudioUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(0.8);
   const [isPlayerVisible, setIsPlayerVisible] = useState(false);
@@ -16,12 +17,46 @@ export function usePlayer() {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
+  const [isShuffle, setIsShuffleState] = useState(() => {
+    const saved = localStorage.getItem('ytm-shuffle');
+    return saved !== null ? JSON.parse(saved) : false;
+  });
+
+  const [repeatMode, setRepeatModeState] = useState(() => {
+    const saved = localStorage.getItem('ytm-repeat');
+    return saved || 'off';
+  });
+
   const audioRef = useRef(null);
   const onTrackEndedRef = useRef(null);
 
   const setAutoplay = useCallback((val) => {
     setAutoplayState(val);
     localStorage.setItem('ytm-autoplay', JSON.stringify(val));
+  }, []);
+
+  const setIsShuffle = useCallback((val) => {
+    setIsShuffleState(val);
+    localStorage.setItem('ytm-shuffle', JSON.stringify(val));
+  }, []);
+
+  const setRepeatMode = useCallback((val) => {
+    setRepeatModeState(val);
+    localStorage.setItem('ytm-repeat', val);
+  }, []);
+
+  const stop = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      // Remove src to abort stream
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
+    }
+    setCurrentSong(null);
+    setAudioUrl(null);
+    setQueue([]);
+    setIsPlayerVisible(false);
+    setIsPlaying(false);
   }, []);
 
   const fetchRecommendations = useCallback(async (songId) => {
@@ -37,9 +72,20 @@ export function usePlayer() {
   }, []);
 
   const play = useCallback((song, srcType, queueList = [], localFilePath = null) => {
+    let newUrl = '';
+    if (srcType === 'stream') {
+      newUrl = `/api/stream/${song.videoId}`;
+    } else if (srcType === 'local' && localFilePath) {
+      newUrl = `/api/play-local?path=${encodeURIComponent(localFilePath)}`;
+    }
+
+    const isSameUrl = (newUrl === audioUrl);
+
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.removeAttribute('src');
+      if (!isSameUrl) {
+        audioRef.current.removeAttribute('src');
+      }
       audioRef.current.load();
     }
 
@@ -49,15 +95,11 @@ export function usePlayer() {
     setIsPlayerVisible(true);
     setCurrentTime(0);
     setDuration(0);
+    setIsLoading(true);
 
-    let newUrl = '';
-    if (srcType === 'stream') {
-      newUrl = `/api/stream/${song.videoId}`;
-    } else if (srcType === 'local' && localFilePath) {
-      newUrl = `/api/play-local?path=${encodeURIComponent(localFilePath)}`;
+    if (!isSameUrl) {
+      setAudioUrl(newUrl);
     }
-
-    setAudioUrl(newUrl);
 
     // If it's a single track play and autoplay is enabled, pre-fetch recommendations
     const isSingleTrack = queueList.length <= 1;
@@ -79,14 +121,35 @@ export function usePlayer() {
         audioRef.current.play().catch(err => console.error("Auto-play prevented", err));
       }
     }, 50);
-  }, [autoplay, fetchRecommendations]);
+  }, [autoplay, fetchRecommendations, audioUrl]);
 
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
     const currentIndex = queue.findIndex(item => item.videoId === currentSong?.videoId);
     if (currentIndex === -1) return;
-    
+
+    // 1. Repeat One Mode
+    if (repeatMode === 'one' && currentSong) {
+      const isLocal = !!(currentSong.filePath || currentSong.status === 'completed');
+      play(currentSong, isLocal ? 'local' : 'stream', queue, currentSong.filePath);
+      return;
+    }
+
+    // 2. Shuffle Mode (Only shuffle if queue has multiple items)
+    if (isShuffle && queue.length > 1) {
+      let nextIndex = currentIndex;
+      while (nextIndex === currentIndex) {
+        nextIndex = Math.floor(Math.random() * queue.length);
+      }
+      const nextSong = queue[nextIndex];
+      const isLocal = !!(nextSong.filePath || nextSong.status === 'completed');
+      play(nextSong, isLocal ? 'local' : 'stream', queue, nextSong.filePath);
+      return;
+    }
+
     const isLastSong = currentIndex === queue.length - 1;
+
+    // 3. Autoplay recommendation fetch (continuous radio)
     if (isLastSong && autoplay && currentSong) {
       fetchRecommendations(currentSong.videoId).then(recs => {
         if (recs && recs.length > 0) {
@@ -100,21 +163,35 @@ export function usePlayer() {
       });
       return;
     }
-    
-    const nextIndex = (currentIndex + 1) % queue.length;
+
+    // 4. Wrap around or end track
+    if (isLastSong) {
+      if (repeatMode === 'all') {
+        const nextSong = queue[0];
+        const isLocal = !!(nextSong.filePath || nextSong.status === 'completed');
+        play(nextSong, isLocal ? 'local' : 'stream', queue, nextSong.filePath);
+      } else {
+        stop();
+      }
+      return;
+    }
+
+    // 5. Normal sequential play
+    const nextIndex = currentIndex + 1;
     const nextSong = queue[nextIndex];
-    
     const isLocal = !!(nextSong.filePath || nextSong.status === 'completed');
-    const filePath = nextSong.filePath;
-    
-    play(nextSong, isLocal ? 'local' : 'stream', queue, filePath);
-  }, [queue, currentSong, autoplay, fetchRecommendations, play]);
+    play(nextSong, isLocal ? 'local' : 'stream', queue, nextSong.filePath);
+  }, [queue, currentSong, autoplay, fetchRecommendations, play, isShuffle, repeatMode, stop]);
 
   const playPrevious = useCallback(() => {
     if (queue.length === 0) return;
     const currentIndex = queue.findIndex(item => item.videoId === currentSong?.videoId);
     if (currentIndex === -1) return;
-    
+
+    if (currentIndex === 0 && repeatMode !== 'all') {
+      return; // Stop/do nothing if at the start and not repeating all
+    }
+
     const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
     const prevSong = queue[prevIndex];
     
@@ -122,7 +199,7 @@ export function usePlayer() {
     const filePath = prevSong.filePath;
     
     play(prevSong, isLocal ? 'local' : 'stream', queue, filePath);
-  }, [queue, currentSong, play]);
+  }, [queue, currentSong, play, repeatMode]);
 
   const playQueueTrack = useCallback((index) => {
     if (index < 0 || index >= queue.length) return;
@@ -152,12 +229,31 @@ export function usePlayer() {
 
     const handleEnded = () => {
       setIsPlaying(false);
+      setIsLoading(false);
       if (onTrackEndedRef.current) {
         onTrackEndedRef.current();
       }
     };
-    const handlePause = () => setIsPlaying(false);
-    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => {
+      setIsPlaying(false);
+      setIsLoading(false);
+    };
+    const handlePlay = () => {
+      // Don't set loading false here, wait for 'playing' event which signifies actual playback start
+    };
+    const handlePlaying = () => {
+      setIsPlaying(true);
+      setIsLoading(false);
+    };
+    const handleWaiting = () => {
+      setIsLoading(true);
+    };
+    const handleCanPlay = () => {
+      setIsLoading(false);
+    };
+    const handleError = () => {
+      setIsLoading(false);
+    };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', updateDuration);
@@ -165,6 +261,10 @@ export function usePlayer() {
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('play', handlePlay);
+    audio.addEventListener('playing', handlePlaying);
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('error', handleError);
 
     // Initial check in case metadata loaded before effect binded
     updateDuration();
@@ -179,6 +279,10 @@ export function usePlayer() {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('playing', handlePlaying);
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('error', handleError);
     };
   }, [audioRef, volume, audioUrl]);
 
@@ -208,19 +312,7 @@ export function usePlayer() {
     setVolumeState(v);
   }, []);
 
-  const stop = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      // Remove src to abort stream
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
-    }
-    setCurrentSong(null);
-    setAudioUrl(null);
-    setQueue([]);
-    setIsPlayerVisible(false);
-    setIsPlaying(false);
-  }, []);
+
 
   const clearQueue = useCallback(() => {
     if (currentSong) {
@@ -237,6 +329,7 @@ export function usePlayer() {
     audioUrl,
     isPlaying,
     currentTime,
+    isLoading,
     duration,
     volume,
     isPlayerVisible,
@@ -252,6 +345,10 @@ export function usePlayer() {
     setVolume,
     stop,
     autoplay,
-    setAutoplay
+    setAutoplay,
+    isShuffle,
+    setIsShuffle,
+    repeatMode,
+    setRepeatMode
   };
 }

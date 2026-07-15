@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Music, Infinity, ListMusic, Trash2 } from 'lucide-react';
+import { Music, Infinity, ListMusic, Trash2, Shuffle, Repeat, Repeat1 } from 'lucide-react';
 import './AudioPlayer.css';
 
 function formatTime(seconds) {
@@ -17,6 +17,7 @@ export default function AudioPlayer({ player }) {
     audioUrl,
     isPlaying,
     currentTime,
+    isLoading,
     duration: audioDuration,
     volume,
     isPlayerVisible,
@@ -31,7 +32,11 @@ export default function AudioPlayer({ player }) {
     playQueueTrack,
     clearQueue,
     autoplay,
-    setAutoplay
+    setAutoplay,
+    isShuffle,
+    setIsShuffle,
+    repeatMode,
+    setRepeatMode
   } = player;
 
   const [isDragging, setIsDragging] = useState(false);
@@ -39,6 +44,16 @@ export default function AudioPlayer({ player }) {
   const [showQueue, setShowQueue] = useState(false);
   
   const activeItemRef = useRef(null);
+
+  const handleRepeatClick = () => {
+    if (repeatMode === 'off') {
+      setRepeatMode('all');
+    } else if (repeatMode === 'all') {
+      setRepeatMode('one');
+    } else {
+      setRepeatMode('off');
+    }
+  };
 
   // Scroll active track in queue into view when opening
   useEffect(() => {
@@ -79,6 +94,24 @@ export default function AudioPlayer({ player }) {
   return (
     <div className={`audio-player ${isPlayerVisible && currentSong ? 'player-enter' : 'player-exit'}`}>
       <audio ref={audioRef} src={audioUrl || undefined} style={{ display: 'none' }} />
+
+      {currentSong && (
+        <input 
+          type="range" 
+          className="player-seekbar"
+          min="0"
+          max={displayDuration || 100}
+          value={displayTime}
+          onMouseDown={handleSeekStart}
+          onMouseUp={handleSeekEnd}
+          onTouchStart={handleSeekStart}
+          onTouchEnd={handleSeekEnd}
+          onChange={handleSeekChange}
+          style={{ '--progress': `${progressPercent}%` }}
+          disabled={source === 'stream'} 
+          title={source === 'stream' ? 'Seeking is disabled for live streams' : ''}
+        />
+      )}
 
       {currentSong && showQueue && (
         <div className="player-queue-panel">
@@ -144,10 +177,21 @@ export default function AudioPlayer({ player }) {
               <h4 className="player-title">{currentSong.title}</h4>
               <p className="player-artist">{currentSong.artist}</p>
             </div>
+            <span className="time-display player-time-display">
+              {formatTime(displayTime)} / {formatTime(displayDuration)}
+            </span>
           </div>
 
         <div className="player-center">
           <div className="player-controls">
+            <button 
+              className={`player-btn player-control-shuffle ${isShuffle ? 'active' : ''}`}
+              onClick={() => setIsShuffle(!isShuffle)}
+              title={`Shuffle: ${isShuffle ? 'ON' : 'OFF'}`}
+            >
+              <Shuffle size={16} />
+            </button>
+
             <button 
               className="player-btn" 
               onClick={playPrevious} 
@@ -159,9 +203,12 @@ export default function AudioPlayer({ player }) {
 
             <button 
               className="player-btn play-pause" 
-              onClick={isPlaying ? pause : resume}
+              onClick={isLoading ? null : (isPlaying ? pause : resume)}
+              disabled={isLoading}
             >
-              {isPlaying ? (
+              {isLoading ? (
+                <div className="player-spinner"></div>
+              ) : isPlaying ? (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
               ) : (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -176,27 +223,16 @@ export default function AudioPlayer({ player }) {
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
             </button>
+
+            <button 
+              className={`player-btn player-control-repeat ${repeatMode !== 'off' ? 'active' : ''}`}
+              onClick={handleRepeatClick}
+              title={`Repeat: ${repeatMode === 'one' ? 'One' : repeatMode === 'all' ? 'All' : 'OFF'}`}
+            >
+              {repeatMode === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
+            </button>
           </div>
 
-          <div className="player-seekbar-container">
-            <span className="time-display">{formatTime(displayTime)}</span>
-            <input 
-              type="range" 
-              className="player-seekbar"
-              min="0"
-              max={displayDuration || 100}
-              value={displayTime}
-              onMouseDown={handleSeekStart}
-              onMouseUp={handleSeekEnd}
-              onTouchStart={handleSeekStart}
-              onTouchEnd={handleSeekEnd}
-              onChange={handleSeekChange}
-              style={{ '--progress': `${progressPercent}%` }}
-              disabled={source === 'stream'} // Streams are usually not forward-seekable reliably via this method
-              title={source === 'stream' ? 'Seeking is disabled for live streams' : ''}
-            />
-            <span className="time-display">{formatTime(displayDuration)}</span>
-          </div>
           {nextSong && (
             <div className="player-up-next-preview" title="Up Next">
               Up Next: <span className="up-next-title">{nextSong.title}</span> • {nextSong.artist}
