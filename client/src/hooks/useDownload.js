@@ -36,9 +36,31 @@ export function useDownload() {
     };
   }, []);
 
+  const syncDownloads = useCallback(async (dir) => {
+    const dirToUse = dir || localStorage.getItem('ytmd_output_dir');
+    if (!dirToUse) return;
+    try {
+      await fetch('/api/download/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outputDir: dirToUse })
+      });
+    } catch (err) {
+      console.error('Failed to sync downloads:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const savedDir = localStorage.getItem('ytmd_output_dir');
+    if (savedDir) {
+      syncDownloads(savedDir);
+    }
+  }, [syncDownloads]);
+
   const startDownload = useCallback(async (song, outputDir) => {
     try {
       const downloadLyrics = localStorage.getItem('ytmd_download_lyrics') !== 'false';
+      const audioFormat = localStorage.getItem('ytmd_audio_format') || 'm4a';
       const res = await fetch('/api/download', {
         method: 'POST',
         headers: {
@@ -51,7 +73,8 @@ export function useDownload() {
           album: song.album,
           thumbnail: song.thumbnail,
           outputDir,
-          downloadLyrics
+          downloadLyrics,
+          audioFormat
         })
       });
 
@@ -70,6 +93,7 @@ export function useDownload() {
   const startBulkDownload = useCallback(async (songs, outputDir) => {
     try {
       const downloadLyrics = localStorage.getItem('ytmd_download_lyrics') !== 'false';
+      const audioFormat = localStorage.getItem('ytmd_audio_format') || 'm4a';
       const res = await fetch('/api/download/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,7 +106,8 @@ export function useDownload() {
             thumbnail: s.thumbnail
           })),
           outputDir,
-          downloadLyrics
+          downloadLyrics,
+          audioFormat
         })
       });
       if (!res.ok) {
@@ -103,5 +128,5 @@ export function useDownload() {
     }
   }, []);
 
-  return { downloads, startDownload, startBulkDownload, clearQueue };
+  return { downloads, startDownload, startBulkDownload, clearQueue, syncDownloads };
 }

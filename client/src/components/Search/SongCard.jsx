@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Music, Disc3, Clock, Maximize2 } from 'lucide-react';
+import { Music, Disc3, Clock, Maximize2, Play, Download, ExternalLink, Hash, Check } from 'lucide-react';
 import './SongCard.css';
 
 function formatDuration(seconds) {
@@ -25,6 +25,42 @@ export default function SongCard({ song, onDownload, onFlyAnimation, downloadSta
       });
     }
     onDownload(song);
+  };
+
+  const getModalStyle = () => {
+    if (!modalRect) return {};
+    
+    const modalWidth = Math.max(350, modalRect.width * 1.15);
+    const estimatedHeight = modalWidth + 180;
+    
+    let top = modalRect.top + modalRect.height / 2;
+    let left = modalRect.left + modalRect.width / 2;
+    
+    const halfHeight = estimatedHeight / 2;
+    const padding = 20; // safe margin from viewport edges
+    
+    // Clamp vertical position
+    if (top - halfHeight < padding) {
+      top = halfHeight + padding;
+    } else if (top + halfHeight > window.innerHeight - padding) {
+      top = window.innerHeight - halfHeight - padding;
+    }
+    
+    // Clamp horizontal position
+    const halfWidth = modalWidth / 2;
+    if (left - halfWidth < padding) {
+      left = halfWidth + padding;
+    } else if (left + halfWidth > window.innerWidth - padding) {
+      left = window.innerWidth - halfWidth - padding;
+    }
+    
+    return {
+      position: 'fixed',
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${modalWidth}px`,
+      transform: 'translate(-50%, -50%) scale(1)'
+    };
   };
 
   const handleThumbnailClick = (e) => {
@@ -159,19 +195,21 @@ export default function SongCard({ song, onDownload, onFlyAnimation, downloadSta
           }}
         >
           <div 
-            className="song-hover-modal liquid-glass"
+            className="song-hover-modal"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute',
-              top: `${modalRect.top + modalRect.height / 2}px`,
-              left: `${modalRect.left + modalRect.width / 2}px`,
-              width: `${Math.max(350, modalRect.width * 1.15)}px`,
-              transform: 'translate(-50%, -50%) scale(1)'
-            }}
+            style={getModalStyle()}
           >
             <div className="hover-modal-hero">
               {song.thumbnail ? (
-                <img src={song.thumbnail.replace('w120-h120', 'w480-h480')} alt={song.title} className="hover-modal-img" />
+                <img 
+                  src={song.thumbnail.replace('w120-h120', 'w480-h480')} 
+                  alt={song.title} 
+                  className="hover-modal-img" 
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = song.thumbnail;
+                  }}
+                />
               ) : (
                 <div className="hover-placeholder"><Music size={64} /></div>
               )}
@@ -185,14 +223,71 @@ export default function SongCard({ song, onDownload, onFlyAnimation, downloadSta
                   <span>PLAYING</span>
                 </div>
               )}
+              <div className="hover-duration-badge">
+                <Clock size={12} className="badge-icon" />
+                {formatDuration(song.duration)}
+              </div>
             </div>
             
             <div className="hover-modal-content">
               <h2 className="hover-modal-title">{song.title}</h2>
               <div className="hover-modal-details">
-                <span className="hover-detail-item"><Music size={14} /> {song.artist}</span>
-                {song.album && <span className="hover-detail-item"><Disc3 size={14} /> {song.album}</span>}
-                <span className="hover-detail-item"><Clock size={14} /> {formatDuration(song.duration)}</span>
+                <span className="hover-detail-item"><Music size={18} /> {song.artist}</span>
+                {song.album && <span className="hover-detail-item"><Disc3 size={18} /> {song.album}</span>}
+              </div>
+
+              <div className="hover-modal-actions">
+                <button 
+                  className={`modal-action-btn play-btn ${isCurrentlyPlaying ? 'playing' : ''}`}
+                  onClick={() => {
+                    if (onPlay) onPlay(song);
+                    setShowModal(false);
+                  }}
+                  title={isCurrentlyPlaying ? 'Now Playing' : 'Play Stream'}
+                >
+                  <Play size={18} fill={isCurrentlyPlaying ? "currentColor" : "none"} />
+                </button>
+
+                {!downloadStatus && (
+                  <button 
+                    className="modal-action-btn download-btn-modal"
+                    onClick={() => {
+                      handleDownloadClick();
+                      setShowModal(false);
+                    }}
+                    title="Download"
+                  >
+                    <Download size={18} />
+                  </button>
+                )}
+
+                {downloadStatus === 'downloading' && (
+                  <button className="modal-action-btn download-btn-modal disabled" disabled title={`Downloading ${downloadPercent}`}>
+                    <span className="spinner-mini"></span>
+                  </button>
+                )}
+
+                {downloadStatus === 'queued' && (
+                  <button className="modal-action-btn download-btn-modal disabled" disabled title="Queued">
+                    <Clock size={18} />
+                  </button>
+                )}
+
+                {downloadStatus === 'completed' && (
+                  <button className="modal-action-btn download-btn-modal completed" disabled title="Downloaded">
+                    <Check size={18} />
+                  </button>
+                )}
+
+                <a 
+                  href={`https://music.youtube.com/watch?v=${song.videoId}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="modal-action-btn ytm-btn"
+                  title="Open in YouTube Music"
+                >
+                  <ExternalLink size={18} />
+                </a>
               </div>
             </div>
           </div>

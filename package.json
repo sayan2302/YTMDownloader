@@ -1,10 +1,52 @@
 {
-  "name": "ytm-downloader-root",
-  "version": "1.0.0",
+  "name": "@supasayan/ytm",
+  "version": "1.0.28",
   "description": "Root package to run both client and server",
+  "main": "main.js",
+  "productName": "YTM",
+  "bin": "bin/cli.js",
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5",
+    "ytmusic-api": "^5.0.0",
+    "ffmpeg-static": "^5.2.0"
+  },
   "scripts": {
     "start": "npx concurrently \"npm run start --prefix server\" \"npm run dev --prefix client\"",
     "dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "install-all": "npm install --prefix server && npm install --prefix client"
+    "install-all": "npm install --prefix server && npm install --prefix client",
+    "app:dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"npx wait-on http://localhost:5173 && npx wait-on http://localhost:3001 && npx electron .\"",
+    "app:build": "npm run build --prefix client && npx electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.sayan.ytm",
+    "productName": "YTM",
+    "directories": {
+      "output": "dist-app"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.music"
+    },
+    "dmg": {
+      "title": "Install YTM"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/ffmpeg-static/**/*"
+    ],
+    "files": [
+      "main.js",
+      "server/**/*",
+      "client/dist/**/*",
+      "package.json"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^43.1.0",
+    "electron-builder": "^26.15.3",
+    "wait-on": "^9.0.10"
   }
 }

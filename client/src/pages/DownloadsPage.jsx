@@ -2,7 +2,7 @@ import DownloadItem from '../components/Download/DownloadItem';
 import { DownloadCloud } from 'lucide-react';
 import './DownloadsPage.css';
 
-export default function DownloadsPage({ downloads, onPlay, currentSong, onSearchAlternative, onClearQueue }) {
+export default function DownloadsPage({ downloads, onPlay, currentSong, onSearchAlternative, onClearQueue, onRetry }) {
   const downloadArray = downloads ? Array.from(downloads.values()).reverse() : [];
   const activeDownloads = downloadArray.filter(d => d.status === 'queued' || d.status === 'downloading');
   // UI Freeze Protection: Cap rendered completed downloads to the most recent 50
@@ -53,6 +53,7 @@ export default function DownloadsPage({ downloads, onPlay, currentSong, onSearch
                 onPlay={onPlay} 
                 isCurrentlyPlaying={currentSong?.videoId === dl.videoId} 
                 onSearchAlternative={onSearchAlternative}
+                onRetry={onRetry}
               />
             ))}
           </div>
@@ -70,6 +71,7 @@ export default function DownloadsPage({ downloads, onPlay, currentSong, onSearch
                 onPlay={(song, rect) => onPlay(dl, rect, historyDownloads)} 
                 isCurrentlyPlaying={currentSong?.videoId === dl.videoId} 
                 onSearchAlternative={onSearchAlternative}
+                onRetry={onRetry}
               />
             ))}
           </div>

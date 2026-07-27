@@ -4,6 +4,7 @@ import SearchPage from './pages/SearchPage';
 import PlaylistPage from './pages/PlaylistPage';
 import DownloadsPage from './pages/DownloadsPage';
 import SettingsPanel from './components/Settings/SettingsPanel';
+import AboutPage from './pages/AboutPage';
 import FlyingThumbnail from './components/Download/FlyingThumbnail';
 import AudioPlayer from './components/Player/AudioPlayer';
 import { useDownload } from './hooks/useDownload';
@@ -20,11 +21,20 @@ function App() {
   }, [activeTab]);
 
   const [outputDir, setOutputDir] = useState(() => {
-    return localStorage.getItem('ytmd_output_dir') || '/Users/sayan/Desktop';
+    return localStorage.getItem('ytmd_output_dir') || '';
   });
   const [searchQueryPreset, setSearchQueryPreset] = useState('');
-  const { downloads, startDownload, startBulkDownload, clearQueue } = useDownload();
+  const { downloads, startDownload, startBulkDownload, clearQueue, syncDownloads } = useDownload();
   const player = usePlayer();
+
+  useEffect(() => {
+    if (player.currentSong) {
+      const statusIcon = player.isPlaying ? '▶ ' : '⏸ ';
+      document.title = `${statusIcon}${player.currentSong.title} - YTMDownloader`;
+    } else {
+      document.title = 'YTMDownloader';
+    }
+  }, [player.currentSong, player.isPlaying]);
 
   const [systemStatus, setSystemStatus] = useState({ status: 'checking', error: null });
   
@@ -37,6 +47,9 @@ function App() {
       if (res.ok) {
         const data = await res.json();
         setSystemStatus(data);
+        if (data.defaultOutputDir && !localStorage.getItem('ytmd_output_dir')) {
+          setOutputDir(data.defaultOutputDir);
+        }
         if (data.status === 'checking' || data.status === 'downloading') {
           setTimeout(checkSystem, 3000);
         }
@@ -55,7 +68,8 @@ function App() {
   const handleSaveOutputDir = useCallback((dir) => {
     setOutputDir(dir);
     localStorage.setItem('ytmd_output_dir', dir);
-  }, []);
+    syncDownloads(dir);
+  }, [syncDownloads]);
 
   const handleSearchAlternative = useCallback((query) => {
     setSearchQueryPreset(query);
@@ -79,25 +93,6 @@ function App() {
   const handleFlyComplete = useCallback((id) => {
     setFlyingItems(prev => prev.filter(item => item.id !== id));
   }, []);
-
-  const handlePlayStream = useCallback((song, startRect, queue = []) => {
-    player.play(song, 'stream', queue);
-    if (startRect) {
-      setTimeout(() => {
-        const targetEl = document.querySelector('.player-thumb') || document.querySelector('.player-thumb-placeholder');
-        const endRect = targetEl 
-          ? targetEl.getBoundingClientRect() 
-          : { left: 24, top: window.innerHeight - 73, width: 56, height: 56 };
-          
-        setFlyingItems(prev => [...prev, {
-          id: Math.random().toString(36).substr(2, 9),
-          thumbnailSrc: song.thumbnail,
-          startRect,
-          endRect
-        }]);
-      }, 50);
-    }
-  }, [player]);
 
   const handlePlayLocal = useCallback((download, startRect, queue = []) => {
     if (download.filePath) {
@@ -131,6 +126,31 @@ function App() {
       alert("File path is missing. Cannot play local file.");
     }
   }, [player]);
+
+  const handlePlayStream = useCallback((song, startRect, queue = []) => {
+    const dl = Array.from(downloads.values()).find(d => d.videoId === song.videoId && d.status === 'completed');
+    if (dl && dl.filePath) {
+      handlePlayLocal(dl, startRect, queue);
+      return;
+    }
+
+    player.play(song, 'stream', queue);
+    if (startRect) {
+      setTimeout(() => {
+        const targetEl = document.querySelector('.player-thumb') || document.querySelector('.player-thumb-placeholder');
+        const endRect = targetEl 
+          ? targetEl.getBoundingClientRect() 
+          : { left: 24, top: window.innerHeight - 73, width: 56, height: 56 };
+          
+        setFlyingItems(prev => [...prev, {
+          id: Math.random().toString(36).substr(2, 9),
+          thumbnailSrc: song.thumbnail,
+          startRect,
+          endRect
+        }]);
+      }, 50);
+    }
+  }, [player, downloads, handlePlayLocal]);
 
   const activeDownloadCount = Array.from(downloads.values()).filter(
     d => d.status === 'queued' || d.status === 'downloading'
@@ -181,10 +201,14 @@ function App() {
             currentSong={player.currentSong} 
             onSearchAlternative={handleSearchAlternative}
             onClearQueue={clearQueue}
+            onRetry={(dl) => startDownload(dl, outputDir)}
           />
         </div>
         <div style={{ display: activeTab === 'settings' ? 'block' : 'none' }}>
           <SettingsPanel outputDir={outputDir} onSave={handleSaveOutputDir} />
+        </div>
+        <div style={{ display: activeTab === 'about' ? 'block' : 'none' }}>
+          <AboutPage systemStatus={systemStatus} />
         </div>
       </main>
       

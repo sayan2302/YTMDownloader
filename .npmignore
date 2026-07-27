@@ -1,0 +1,21 @@
+# Ignore compiled desktop app outputs
+dist-app/
+
+# Force inclusion of compiled frontend build assets
+!client/dist/
+!client/dist/**/*
+
+# Ignore dependency directories
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Ignore development configuration files
+.git/
+.gitignore
+.npmignore
+
+# Ignore project documentation artifacts
+walkthrough.md
+implementation_plan.md
+task.md

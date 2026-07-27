@@ -40,7 +40,7 @@ function cleanupTempFiles(outputDir, title) {
       // Check if file prefix matches the sanitized title
       if (file.startsWith(sanitizedTitle)) {
         const ext = path.extname(file).toLowerCase();
-        if (tempExtensions.includes(ext) || file.endsWith('.temp.webp') || file.endsWith('.m4a.part')) {
+        if (tempExtensions.includes(ext) || file.endsWith('.temp.webp') || file.endsWith('.m4a.part') || file.endsWith('.mp3.part')) {
           const fullPath = path.join(outputDir, file);
           if (fs.existsSync(fullPath)) {
             fs.unlinkSync(fullPath);
@@ -54,7 +54,13 @@ function cleanupTempFiles(outputDir, title) {
   }
 }
 
-export function downloadTrack(videoId, title, rawOutputDir, onProgress, onComplete, onError) {
+export function downloadTrack(videoId, title, rawOutputDir, audioFormat = 'm4a', onProgress, onComplete, onError) {
+  if (typeof audioFormat === 'function') {
+    onError = onComplete;
+    onComplete = onProgress;
+    onProgress = audioFormat;
+    audioFormat = 'm4a';
+  }
   const outputDir = resolveOutputDir(rawOutputDir);
   // Ensure output directory exists
   if (!fs.existsSync(outputDir)) {
@@ -66,17 +72,19 @@ export function downloadTrack(videoId, title, rawOutputDir, onProgress, onComple
     }
   }
 
+  const sanitizedTitle = (title || 'Unknown Title').replace(/[\\/:*?"<>|]/g, '_');
+
   const args = [
     '--no-cache-dir',
     ...(path.isAbsolute(FFMPEG_PATH) ? ['--ffmpeg-location', FFMPEG_PATH] : []),
     '--extractor-args', 'youtube:player_client=android_vr,web,mweb',
-    '-f', 'bestaudio[ext=m4a]/bestaudio',
+    '-f', 'bestaudio',
     '-x',
-    '--audio-format', 'm4a',
+    '--audio-format', audioFormat,
     '--embed-metadata',
     '--embed-thumbnail',
     '--progress-template', '%(progress)j',
-    '-o', path.join(outputDir, '%(title)s.%(ext)s'),
+    '-o', path.join(outputDir, `${sanitizedTitle}.%(ext)s`),
     '--no-playlist',
     `https://music.youtube.com/watch?v=${videoId}`
   ];

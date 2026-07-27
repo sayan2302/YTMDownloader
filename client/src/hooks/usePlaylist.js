@@ -5,7 +5,7 @@ export function usePlaylist() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchPlaylist = useCallback(async (url) => {
+  const fetchPlaylist = useCallback(async (url, outputDir) => {
     if (!url) {
       setPlaylist(null);
       return;
@@ -18,7 +18,7 @@ export function usePlaylist() {
       const res = await fetch('/api/playlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ url, outputDir })
       });
 
       if (!res.ok) {

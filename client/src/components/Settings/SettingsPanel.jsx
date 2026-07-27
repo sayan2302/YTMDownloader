@@ -7,6 +7,9 @@ export default function SettingsPanel({ outputDir, onSave }) {
   const [downloadLyrics, setDownloadLyrics] = useState(() => {
     return localStorage.getItem('ytmd_download_lyrics') !== 'false';
   });
+  const [audioFormat, setAudioFormat] = useState(() => {
+    return localStorage.getItem('ytmd_audio_format') || 'm4a';
+  });
   const [isBrowsing, setIsBrowsing] = useState(false);
   const [showSavedMsg, setShowSavedMsg] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -116,6 +119,30 @@ export default function SettingsPanel({ outputDir, onSave }) {
 
           <div className="form-group toggle-group">
             <div className="toggle-row">
+              <span className="toggle-label-text label-with-info">
+                Audio Format
+                <div className="tooltip-container">
+                  <Info size={14} className="info-icon" />
+                  <span className="tooltip-text">Select your preferred audio format (M4A or MP3). M4A is the native YouTube Music format and downloads faster.</span>
+                </div>
+              </span>
+              <select
+                className="format-select"
+                value={audioFormat}
+                onChange={e => {
+                  const val = e.target.value;
+                  setAudioFormat(val);
+                  localStorage.setItem('ytmd_audio_format', val);
+                  triggerSavedIndicator();
+                }}
+                style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-primary)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '6px 12px', outline: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <option value="m4a" style={{ background: '#111' }}>M4A</option>
+                <option value="mp3" style={{ background: '#111' }}>MP3</option>
+              </select>
+            </div>
+
+            <div className="toggle-row" style={{ marginTop: '1.5rem' }}>
               <span className="toggle-label-text label-with-info">
                 Download & Embed Lyrics
                 <div className="tooltip-container">

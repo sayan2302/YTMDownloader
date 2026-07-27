@@ -147,7 +147,13 @@
   width: 100%;
 }
 
-.dl-search-alternative-btn {
+.dl-action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dl-action-btn {
   background: var(--accent-gradient);
   color: white;
   padding: 0.25rem 0.65rem;
@@ -160,12 +166,12 @@
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
 }
 
-.dl-search-alternative-btn:hover {
+.dl-action-btn:hover {
   transform: scale(1.03);
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
-.dl-search-alternative-btn:active {
+.dl-action-btn:active {
   transform: scale(0.97);
 }
 
