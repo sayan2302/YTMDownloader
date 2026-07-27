@@ -5,7 +5,7 @@ const { spawn } = require('child_process');
 
 const net = require('net');
 
-console.log('Starting YTM Downloader...');
+console.log('Starting OpenSpot...');
 
 // Path to Express server index.js
 const serverPath = path.join(__dirname, '../server/index.js');

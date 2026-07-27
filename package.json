@@ -1,12 +1,12 @@
 {
-  "name": "@supasayan/ytm",
+  "name": "@supasayan/openspot",
   "version": "1.0.31",
-  "description": "Cross-platform YouTube Music Downloader & Player with High-Res Audio (FLAC/M4A), automatic metadata tagging & modern Liquid Glass Web UI.",
+  "description": "OpenSpot — Cross-platform Music Downloader, Player & Song Lore Platform with High-Res Audio, Karaoke Synced Lyrics & Liquid Glass UI.",
   "main": "main.js",
-  "productName": "YTM",
+  "productName": "OpenSpot",
   "bin": {
-    "ytm": "bin/cli.js",
-    "ytm-downloader": "bin/cli.js"
+    "openspot": "bin/cli.js",
+    "openspot-cli": "bin/cli.js"
   },
   "keywords": [
     "ytm",

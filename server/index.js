@@ -10,6 +10,8 @@ import downloadRoutes from './routes/download.js';
 import browseRoutes from './routes/browse.js';
 import streamRoutes from './routes/stream.js';
 import playLocalRoutes from './routes/playLocal.js';
+import lyricsRoutes from './routes/lyrics.js';
+import triviaRoutes from './routes/trivia.js';
 import { checkAndSetupDependencies, getDependencyStatus } from './utils/dependencyChecker.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,6 +35,8 @@ app.use('/api/download', downloadRoutes);
 app.use('/api/browse', browseRoutes);
 app.use('/api/stream', streamRoutes);
 app.use('/api/play-local', playLocalRoutes);
+app.use('/api/lyrics', lyricsRoutes);
+app.use('/api/trivia', triviaRoutes);
 
 // System Check Endpoint
 app.get('/api/system-check', (req, res) => {
@@ -48,7 +52,7 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, async () => {
-  console.log(`YTMDownloader Backend running on http://127.0.0.1:${PORT}`);
+  console.log(`OpenSpot Backend running on http://127.0.0.1:${PORT}`);
   // Run async setup check
   await checkAndSetupDependencies();
 });

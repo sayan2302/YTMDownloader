@@ -16,8 +16,9 @@ router.get('/:videoId', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
 
   const args = [
-    '--extractor-args', 'youtube:player_client=android_vr,web,mweb',
-    '-f', 'bestaudio[ext=m4a]/bestaudio',
+    '--no-check-certificates',
+    '--extractor-args', 'youtube:player_client=android,web,tv',
+    '-f', 'ba/b/best',
     '--no-playlist',
     '-o', '-',
     `https://music.youtube.com/watch?v=${videoId}`

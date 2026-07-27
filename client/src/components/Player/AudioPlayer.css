@@ -634,3 +634,30 @@ input[type=range]:disabled {
 .player-control-repeat.active {
   color: var(--accent-primary) !important;
 }
+
+/* Live Web Audio Canvas Visualizer */
+.audio-visualizer-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.65;
+  overflow: hidden;
+  border-radius: inherit;
+  transition: opacity 0.4s ease;
+}
+
+.audio-visualizer-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.player-content {
+  position: relative;
+  z-index: 1;
+}
+

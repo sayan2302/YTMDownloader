@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Music, Disc3, Clock, Maximize2, Play, Download, ExternalLink, Hash, Check } from 'lucide-react';
+import { Music, Disc3, Clock, Maximize2, Play, Download, ExternalLink, Hash, Check, Mic2, Sparkles, Trophy, Quote, X } from 'lucide-react';
 import { getHighResThumbnail } from '../../utils/thumbnail';
+import SmartImage from '../Common/SmartImage';
 import './SongCard.css';
 
 function formatDuration(seconds) {
@@ -16,6 +17,37 @@ export default function SongCard({ song, onDownload, onFlyAnimation, downloadSta
   const cardRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
   const [modalRect, setModalRect] = useState(null);
+  const [imgError, setImgError] = useState(false);
+  const [hasLyrics, setHasLyrics] = useState(false);
+  const [trivia, setTrivia] = useState(null);
+
+  useEffect(() => {
+    if (showModal && song?.title) {
+      fetch(`/api/trivia?title=${encodeURIComponent(song.title)}&artist=${encodeURIComponent(song.artist || '')}`)
+        .then(res => res.json())
+        .then(data => setTrivia(data))
+        .catch(() => setTrivia(null));
+    }
+  }, [showModal, song?.title, song?.artist]);
+
+  useEffect(() => {
+    const targetId = song?.videoId || song?.id;
+    if (!targetId) return;
+
+    let isMounted = true;
+    fetch(`/api/lyrics/check/${targetId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (isMounted && data?.hasLyrics) {
+          setHasLyrics(true);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [song?.videoId, song?.id]);
 
   const handleDownloadClick = () => {
     if (buttonRef.current && onFlyAnimation) {
@@ -89,30 +121,26 @@ export default function SongCard({ song, onDownload, onFlyAnimation, downloadSta
         }}
         title="Play song"
       >
-        <div 
-          className="song-thumbnail" 
-          onClick={handleThumbnailClick}
-          title="Click to view details"
-        >
-          {song.thumbnail ? (
-            <>
-              <img src={getHighResThumbnail(song.thumbnail, 400)} alt={song.title} />
-              {isCurrentlyPlaying && (
-                <div className="equalizer-overlay">
-                  <div className="bar bar1"></div>
-                  <div className="bar bar2"></div>
-                  <div className="bar bar3"></div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="placeholder-thumb">
-              <Music size={24} className="placeholder-icon" />
+        <div className="song-thumbnail">
+          <SmartImage 
+            src={song.thumbnail} 
+            videoId={song.videoId || song.id} 
+            alt={song.title} 
+            size={400} 
+            iconSize={24}
+          />
+          {isCurrentlyPlaying && (
+            <div className="equalizer-overlay">
+              <div className="bar bar1"></div>
+              <div className="bar bar2"></div>
+              <div className="bar bar3"></div>
             </div>
           )}
-          <div className="thumbnail-hover-hint">
-            <Maximize2 size={20} />
-          </div>
+          {hasLyrics && (
+            <div className="card-lyrics-badge" title="Live Synced Lyrics Available">
+              <Mic2 size={12} />
+            </div>
+          )}
         </div>
         
         <div className="song-info">
@@ -123,20 +151,52 @@ export default function SongCard({ song, onDownload, onFlyAnimation, downloadSta
         </div>
       </div>
 
-      {(!downloadStatus) && (
+      {/* Cyber-Wallet Slideout Action Menu */}
+      <div className="song-card-wallet-menu">
+        {hasLyrics && (
+          <button 
+            className="wallet-action-btn lyrics-btn" 
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onPlay) onPlay(song, null, { autoLyrics: true });
+            }} 
+            title="Play in Karaoke Lyrics Mode"
+          >
+            <Mic2 size={15} />
+          </button>
+        )}
+
+        {(!downloadStatus || downloadStatus === 'completed' || downloadStatus === 'error') && (
+          <button 
+            ref={buttonRef}
+            className="wallet-action-btn download-btn" 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownloadClick();
+            }} 
+            title="Download Track"
+          >
+            <Download size={15} />
+          </button>
+        )}
+
+        {(downloadStatus === 'queued' || downloadStatus === 'downloading') && (
+          <div className="wallet-progress-indicator" title={`Downloading: ${downloadPercent || 0}%`}>
+            <div className="wallet-spinner"></div>
+          </div>
+        )}
+
         <button 
-          ref={buttonRef}
-          className="download-btn" 
-          onClick={handleDownloadClick} 
-          title="Download"
+          className="wallet-action-btn details-btn" 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleThumbnailClick(e);
+          }} 
+          title="Inspect Details"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
+          <Maximize2 size={15} />
         </button>
-      )}
+      </div>
 
       {(downloadStatus === 'queued' || downloadStatus === 'downloading') && (() => {
         const pctFloat = parseFloat(downloadPercent) || 0;
@@ -179,121 +239,134 @@ export default function SongCard({ song, onDownload, onFlyAnimation, downloadSta
           </svg>
         </div>
       )}
-      </div>
-
-      {showModal && modalRect && createPortal(
+      </div>      {showModal && createPortal(
         <div 
-          className="song-hover-modal-overlay"
+          className="song-sidebar-overlay"
           onClick={() => setShowModal(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            pointerEvents: 'auto',
-            zIndex: 99999,
-          }}
         >
           <div 
-            className="song-hover-modal"
+            className="song-sidebar-drawer"
             onClick={(e) => e.stopPropagation()}
-            style={getModalStyle()}
           >
-            <div className="hover-modal-hero">
-              {song.thumbnail ? (
-                <img 
-                  src={getHighResThumbnail(song.thumbnail, 800)} 
+            <div className="sidebar-header">
+              <div className="sidebar-header-title">
+                <Sparkles size={16} className="sidebar-sparkle-icon" />
+                <span>Song Insights</span>
+              </div>
+              <button className="sidebar-close-btn" onClick={() => setShowModal(false)} title="Close Sidebar">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="sidebar-scroll-content">
+              <div className="sidebar-hero">
+                <SmartImage 
+                  src={song.thumbnail} 
+                  videoId={song.videoId || song.id} 
                   alt={song.title} 
-                  className="hover-modal-img" 
-                  onError={(e) => {
-                    const currentSrc = e.target.src;
-                    if (currentSrc.includes('maxresdefault.jpg')) {
-                      e.target.src = currentSrc.replace('maxresdefault.jpg', 'hqdefault.jpg');
-                    } else if (currentSrc !== song.thumbnail) {
-                      e.target.src = song.thumbnail;
-                    }
-                  }}
+                  className="sidebar-hero-img" 
+                  size={512} 
+                  iconSize={64}
                 />
-              ) : (
-                <div className="hover-placeholder"><Music size={64} /></div>
-              )}
-              {isCurrentlyPlaying && (
-                <div className="hover-playing-badge">
-                  <div className="equalizer-overlay active">
-                    <div className="bar bar1"></div>
-                    <div className="bar bar2"></div>
-                    <div className="bar bar3"></div>
+                {isCurrentlyPlaying && (
+                  <div className="hover-playing-badge">
+                    <div className="equalizer-overlay active">
+                      <div className="bar bar1"></div>
+                      <div className="bar bar2"></div>
+                      <div className="bar bar3"></div>
+                    </div>
+                    <span>PLAYING</span>
                   </div>
-                  <span>PLAYING</span>
+                )}
+                {hasLyrics && (
+                  <div className="modal-lyrics-badge" title="Live Synced Lyrics Available">
+                    <Mic2 size={12} className="badge-icon" />
+                    <span>Synced Lyrics</span>
+                  </div>
+                )}
+                <div className="hover-duration-badge">
+                  <Clock size={12} className="badge-icon" />
+                  {formatDuration(song.duration)}
+                </div>
+              </div>
+              
+              <div className="sidebar-meta-section">
+                <h2 className="sidebar-title">{song.title}</h2>
+                <div className="sidebar-details">
+                  <span className="sidebar-detail-item"><Music size={18} /> {song.artist}</span>
+                  {song.album && <span className="sidebar-detail-item"><Disc3 size={18} /> {song.album}</span>}
+                </div>
+              </div>
+
+              {trivia && (
+                <div className="hover-modal-trivia-box">
+                  <div className="trivia-header">
+                    <Sparkles size={13} className="trivia-sparkle" />
+                    <span>BEHIND THE SONG</span>
+                  </div>
+                  <p className="trivia-story">{trivia.story}</p>
+                  
+                  {trivia.quote && (
+                    <div className="trivia-quote-box">
+                      <Quote size={14} className="trivia-quote-icon" />
+                      <div className="trivia-quote-content">
+                        <p className="trivia-quote-text">"{trivia.quote}"</p>
+                        {trivia.quoteSource && <span className="trivia-quote-source">— {trivia.quoteSource}</span>}
+                      </div>
+                    </div>
+                  )}
+
+                  {trivia.achievement && (
+                    <div className="trivia-feat">
+                      <Trophy size={12} className="trivia-trophy" />
+                      <span>{trivia.achievement}</span>
+                    </div>
+                  )}
                 </div>
               )}
-              <div className="hover-duration-badge">
-                <Clock size={12} className="badge-icon" />
-                {formatDuration(song.duration)}
-              </div>
             </div>
-            
-            <div className="hover-modal-content">
-              <h2 className="hover-modal-title">{song.title}</h2>
-              <div className="hover-modal-details">
-                <span className="hover-detail-item"><Music size={18} /> {song.artist}</span>
-                {song.album && <span className="hover-detail-item"><Disc3 size={18} /> {song.album}</span>}
-              </div>
 
-              <div className="hover-modal-actions">
+            <div className="sidebar-footer-actions">
+              <button 
+                className={`sidebar-action-btn play-btn ${isCurrentlyPlaying ? 'playing' : ''}`}
+                onClick={() => {
+                  if (onPlay) onPlay(song);
+                }}
+                title={isCurrentlyPlaying ? 'Now Playing' : 'Play Stream'}
+              >
+                <Play size={16} fill={isCurrentlyPlaying ? "currentColor" : "none"} />
+                <span>{isCurrentlyPlaying ? 'Playing' : 'Play'}</span>
+              </button>
+
+              {(!downloadStatus || downloadStatus === 'error') && (
                 <button 
-                  className={`modal-action-btn play-btn ${isCurrentlyPlaying ? 'playing' : ''}`}
+                  className="sidebar-action-btn download-btn-modal"
                   onClick={() => {
-                    if (onPlay) onPlay(song);
-                    setShowModal(false);
+                    handleDownloadClick();
                   }}
-                  title={isCurrentlyPlaying ? 'Now Playing' : 'Play Stream'}
+                  title="Download Track"
                 >
-                  <Play size={18} fill={isCurrentlyPlaying ? "currentColor" : "none"} />
+                  <Download size={16} />
+                  <span>Download</span>
                 </button>
+              )}
 
-                {!downloadStatus && (
-                  <button 
-                    className="modal-action-btn download-btn-modal"
-                    onClick={() => {
-                      handleDownloadClick();
-                      setShowModal(false);
-                    }}
-                    title="Download"
-                  >
-                    <Download size={18} />
-                  </button>
-                )}
+              {downloadStatus === 'completed' && (
+                <button className="sidebar-action-btn completed" disabled title="Downloaded">
+                  <Check size={16} />
+                  <span>Downloaded</span>
+                </button>
+              )}
 
-                {downloadStatus === 'downloading' && (
-                  <button className="modal-action-btn download-btn-modal disabled" disabled title={`Downloading ${downloadPercent}`}>
-                    <span className="spinner-mini"></span>
-                  </button>
-                )}
-
-                {downloadStatus === 'queued' && (
-                  <button className="modal-action-btn download-btn-modal disabled" disabled title="Queued">
-                    <Clock size={18} />
-                  </button>
-                )}
-
-                {downloadStatus === 'completed' && (
-                  <button className="modal-action-btn download-btn-modal completed" disabled title="Downloaded">
-                    <Check size={18} />
-                  </button>
-                )}
-
-                <a 
-                  href={`https://music.youtube.com/watch?v=${song.videoId}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="modal-action-btn ytm-btn"
-                  title="Open in YouTube Music"
-                >
-                  <ExternalLink size={18} />
-                </a>
-              </div>
+              <a 
+                href={`https://music.youtube.com/watch?v=${song.videoId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="sidebar-action-btn ytm-btn"
+                title="Open in YouTube Music"
+              >
+                <ExternalLink size={16} />
+              </a>
             </div>
           </div>
         </div>,

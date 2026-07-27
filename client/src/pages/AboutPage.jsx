@@ -93,7 +93,7 @@ export default function AboutPage({ systemStatus }) {
         <h3 className="section-title"><Terminal size={20} className="sec-icon" /> Quick CLI Reference</h3>
         <p>You can run this entire application globally at any time using the npm executable command:</p>
         <div className="code-block">
-          <code>npx @supasayan/ytm</code>
+          <code>npx @supasayan/openspot</code>
         </div>
       </section>
 
@@ -103,7 +103,7 @@ export default function AboutPage({ systemStatus }) {
           <ShieldAlert size={16} /> Disclaimer & Legal Info
         </h4>
         <p>
-          YTMDownloader is an open-source, self-hosted educational project meant strictly for personal backups and offline listening. 
+          OpenSpot is an open-source, self-hosted educational project meant strictly for personal backups and offline listening. 
           This tool is not affiliated with, authorized, or endorsed by Google LLC, YouTube, or YouTube Music. 
           Please respect the copyright and terms of service of the creators and platforms from which you stream.
         </p>

@@ -1,5 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Music, Infinity, ListMusic, Trash2, Shuffle, Repeat, Repeat1 } from 'lucide-react';
+import { Music, Infinity, ListMusic, Trash2, Shuffle, Repeat, Repeat1, Mic2 } from 'lucide-react';
+import AudioVisualizer from './AudioVisualizer';
+import LyricsView from './LyricsView';
+import SmartImage from '../Common/SmartImage';
 import './AudioPlayer.css';
 
 function formatTime(seconds) {
@@ -36,12 +39,25 @@ export default function AudioPlayer({ player }) {
     isShuffle,
     setIsShuffle,
     repeatMode,
-    setRepeatMode
+    setRepeatMode,
+    autoLyricsSignal
   } = player;
 
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState(0);
   const [showQueue, setShowQueue] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [thumbError, setThumbError] = useState(false);
+
+  useEffect(() => {
+    if (autoLyricsSignal > 0) {
+      setShowLyrics(true);
+    }
+  }, [autoLyricsSignal]);
+
+  useEffect(() => {
+    setThumbError(false);
+  }, [currentSong?.videoId, currentSong?.thumbnail]);
   
   const activeItemRef = useRef(null);
 
@@ -93,7 +109,8 @@ export default function AudioPlayer({ player }) {
 
   return (
     <div className={`audio-player ${isPlayerVisible && currentSong ? 'player-enter' : 'player-exit'}`}>
-      <audio ref={audioRef} src={audioUrl || undefined} style={{ display: 'none' }} />
+      <audio ref={audioRef} src={audioUrl || undefined} crossOrigin="anonymous" style={{ display: 'none' }} />
+      {currentSong && isPlaying && !isLoading && <AudioVisualizer audioRef={audioRef} isPlaying={isPlaying} thumbnail={currentSong?.thumbnail} />}
 
       {currentSong && (
         <input 
@@ -134,11 +151,14 @@ export default function AudioPlayer({ player }) {
                   title={`Play: ${item.title}`}
                 >
                   <div className="queue-item-thumb-container">
-                    {item.thumbnail ? (
-                      <img src={item.thumbnail} alt="" className="queue-item-thumb" />
-                    ) : (
-                      <div className="queue-item-thumb-placeholder"><Music size={14} /></div>
-                    )}
+                    <SmartImage 
+                      src={item.thumbnail} 
+                      videoId={item.videoId} 
+                      alt="" 
+                      className="queue-item-thumb" 
+                      size={120} 
+                      iconSize={14}
+                    />
                     {isActive && (
                       <div className="queue-playing-overlay">
                         <div className="equalizer-overlay active">
@@ -163,16 +183,27 @@ export default function AudioPlayer({ player }) {
         </div>
       )}
 
+      {currentSong && showLyrics && (
+        <LyricsView 
+          currentSong={currentSong} 
+          currentTime={currentTime} 
+          duration={displayDuration} 
+          onSeek={seek}
+          onClose={() => setShowLyrics(false)} 
+        />
+      )}
+
       {currentSong && (
         <div className="player-content">
           <div className="player-songinfo">
-            {currentSong.thumbnail ? (
-              <img src={currentSong.thumbnail} alt="Album Art" className="player-thumb" />
-            ) : (
-              <div className="player-thumb-placeholder">
-                <Music size={24} className="placeholder-icon" />
-              </div>
-            )}
+            <SmartImage 
+              src={currentSong.thumbnail} 
+              videoId={currentSong.videoId} 
+              alt="Album Art" 
+              className="player-thumb" 
+              size={540} 
+              iconSize={24}
+            />
             <div className="player-meta">
               <h4 className="player-title">{currentSong.title}</h4>
               <p className="player-artist">{currentSong.artist}</p>
@@ -241,6 +272,14 @@ export default function AudioPlayer({ player }) {
         </div>
 
         <div className="player-right">
+          <button 
+            className={`player-queue-toggle ${showLyrics ? 'active' : ''}`} 
+            onClick={() => setShowLyrics(!showLyrics)}
+            title="Live Synced Lyrics"
+          >
+            <Mic2 size={20} />
+          </button>
+
           <button 
             className={`player-autoplay-btn ${autoplay ? 'active' : ''}`} 
             onClick={() => setAutoplay(!autoplay)}

@@ -52,7 +52,7 @@ export default function SearchResults({ results, isLoading, onDownload, onFlyAni
                 onFlyAnimation={onFlyAnimation}
                 downloadStatus={dlEntry?.status || null}
                 downloadPercent={dlEntry?.percent || '0%'}
-                onPlay={(song, rect) => onPlay(song, rect, results)}
+                onPlay={(songItem, rect, opts) => onPlay(songItem, rect, results, opts)}
                 isCurrentlyPlaying={currentSong?.videoId === song.videoId}
               />
             </div>

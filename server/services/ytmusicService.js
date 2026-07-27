@@ -155,7 +155,7 @@ function getHighResThumbnail(url, size = 540) {
   }
   if (url.includes('ytimg.com') || url.includes('youtube.com')) {
     if (/\/(default|mqdefault|hqdefault|sddefault)\.jpg/i.test(url)) {
-      return url.replace(/\/(default|mqdefault|hqdefault|sddefault)\.jpg/gi, '/maxresdefault.jpg');
+      return url.replace(/\/(default|mqdefault|hqdefault|sddefault)\.jpg/gi, '/hqdefault.jpg');
     }
   }
   return url;

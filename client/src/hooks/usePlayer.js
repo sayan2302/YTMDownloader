@@ -71,7 +71,9 @@ export function usePlayer() {
     }
   }, []);
 
-  const play = useCallback((song, srcType, queueList = [], localFilePath = null) => {
+  const [autoLyricsSignal, setAutoLyricsSignal] = useState(0);
+
+  const play = useCallback((song, srcType, queueList = [], localFilePath = null, options = {}) => {
     let newUrl = '';
     if (srcType === 'stream') {
       newUrl = `/api/stream/${song.videoId}`;
@@ -93,9 +95,14 @@ export function usePlayer() {
     setSource(srcType);
     setQueue(queueList);
     setIsPlayerVisible(true);
+    setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
     setIsLoading(true);
+
+    if (options.autoLyrics) {
+      setAutoLyricsSignal(prev => prev + 1);
+    }
 
     if (!isSameUrl) {
       setAudioUrl(newUrl);
@@ -344,6 +351,7 @@ export function usePlayer() {
     seek,
     setVolume,
     stop,
+    autoLyricsSignal,
     autoplay,
     setAutoplay,
     isShuffle,

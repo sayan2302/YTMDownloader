@@ -6,7 +6,7 @@ export default function Header({ activeTab, onTabChange, activeDownloadCount = 0
     <header className="app-header">
       <div className="header-content">
         <div className="logo">
-          <h2>YTM<span>Downloader</span></h2>
+          <h2>Open<span>Spot</span></h2>
         </div>
         
         <nav className="tab-nav">

@@ -30,9 +30,9 @@ function App() {
   useEffect(() => {
     if (player.currentSong) {
       const statusIcon = player.isPlaying ? '▶ ' : '⏸ ';
-      document.title = `${statusIcon}${player.currentSong.title} - YTMDownloader`;
+      document.title = `${statusIcon}${player.currentSong.title} - OpenSpot`;
     } else {
-      document.title = 'YTMDownloader';
+      document.title = 'OpenSpot';
     }
   }, [player.currentSong, player.isPlaying]);
 
@@ -94,7 +94,7 @@ function App() {
     setFlyingItems(prev => prev.filter(item => item.id !== id));
   }, []);
 
-  const handlePlayLocal = useCallback((download, startRect, queue = []) => {
+  const handlePlayLocal = useCallback((download, startRect, queue = [], options = {}) => {
     if (download.filePath) {
       // Create a song-like object from download for the player
       const songData = {
@@ -105,7 +105,7 @@ function App() {
         thumbnail: download.thumbnail,
         filePath: download.filePath
       };
-      player.play(songData, 'local', queue, download.filePath);
+      player.play(songData, 'local', queue, download.filePath, options);
       
       if (startRect) {
         setTimeout(() => {
@@ -127,14 +127,14 @@ function App() {
     }
   }, [player]);
 
-  const handlePlayStream = useCallback((song, startRect, queue = []) => {
+  const handlePlayStream = useCallback((song, startRect, queue = [], options = {}) => {
     const dl = Array.from(downloads.values()).find(d => d.videoId === song.videoId && d.status === 'completed');
     if (dl && dl.filePath) {
-      handlePlayLocal(dl, startRect, queue);
+      handlePlayLocal(dl, startRect, queue, options);
       return;
     }
 
-    player.play(song, 'stream', queue);
+    player.play(song, 'stream', queue, null, options);
     if (startRect) {
       setTimeout(() => {
         const targetEl = document.querySelector('.player-thumb') || document.querySelector('.player-thumb-placeholder');
