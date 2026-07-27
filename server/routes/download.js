@@ -159,23 +159,7 @@ async function processQueue() {
       markDirty(downloadId);
     }
     activeDownloads--;
-    
-    // Chain-Reaction Guards
-    const msg = err.message || '';
-    if (msg.includes('429') || msg.includes('403') || msg.includes('Sign in to confirm')) {
-      console.warn(`[Queue] YouTube Rate Limit/Ban detected! Pausing queue for 5 minutes.`);
-      isQueuePaused = true;
-      setTimeout(() => {
-        console.log(`[Queue] Resuming queue after 5 minute pause.`);
-        isQueuePaused = false;
-        processQueue();
-      }, 300000);
-    } else if (msg.includes('ENOSPC') || msg.includes('No space left')) {
-      console.error(`[Queue] Disk Full (ENOSPC)! Pausing queue indefinitely.`);
-      isQueuePaused = true;
-    } else {
-      processQueue();
-    }
+    processQueue();
   };
 
   // Pre-flight directory check
@@ -432,11 +416,9 @@ router.post('/clear-queue', (req, res) => {
 });
 
 router.post('/clear-cache', (req, res) => {
-  for (const [id, dl] of downloadsMap.entries()) {
-    if (dl.status === 'completed' || dl.status === 'error') {
-      downloadsMap.delete(id);
-    }
-  }
+  downloadsMap.clear();
+  downloadQueue.length = 0;
+  activeDownloads = 0;
   scheduleSave();
 
   import('child_process').then(({ exec }) => {

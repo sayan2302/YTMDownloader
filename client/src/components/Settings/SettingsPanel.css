@@ -144,24 +144,29 @@
   gap: 0.5rem;
 }
 
+.btn-open-folder,
 .btn-browse {
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   border: 1px solid var(--border);
-  padding: 0 1.25rem;
+  padding: 0 1rem;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--transition-fast);
+  cursor: pointer;
 }
 
+.btn-open-folder:hover:not(:disabled),
 .btn-browse:hover:not(:disabled) {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
   color: white;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
 }
 
+.btn-open-folder:disabled,
 .btn-browse:disabled {
   opacity: 0.5;
   cursor: not-allowed;

@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Music, Disc3, Clock, Maximize2, Play, Download, ExternalLink, Hash, Check } from 'lucide-react';
+import { getHighResThumbnail } from '../../utils/thumbnail';
 import './SongCard.css';
 
 function formatDuration(seconds) {
@@ -95,7 +96,7 @@ export default function SongCard({ song, onDownload, onFlyAnimation, downloadSta
         >
           {song.thumbnail ? (
             <>
-              <img src={song.thumbnail} alt={song.title} />
+              <img src={getHighResThumbnail(song.thumbnail, 400)} alt={song.title} />
               {isCurrentlyPlaying && (
                 <div className="equalizer-overlay">
                   <div className="bar bar1"></div>
@@ -202,12 +203,16 @@ export default function SongCard({ song, onDownload, onFlyAnimation, downloadSta
             <div className="hover-modal-hero">
               {song.thumbnail ? (
                 <img 
-                  src={song.thumbnail.replace('w120-h120', 'w480-h480')} 
+                  src={getHighResThumbnail(song.thumbnail, 800)} 
                   alt={song.title} 
                   className="hover-modal-img" 
                   onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = song.thumbnail;
+                    const currentSrc = e.target.src;
+                    if (currentSrc.includes('maxresdefault.jpg')) {
+                      e.target.src = currentSrc.replace('maxresdefault.jpg', 'hqdefault.jpg');
+                    } else if (currentSrc !== song.thumbnail) {
+                      e.target.src = song.thumbnail;
+                    }
                   }}
                 />
               ) : (

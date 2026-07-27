@@ -1,21 +1,24 @@
-# Ignore compiled desktop app outputs
+# Ignore desktop app outputs
 dist-app/
 
-# Force inclusion of compiled frontend build assets
-!client/dist/
-!client/dist/**/*
-
-# Ignore dependency directories
+# Ignore node_modules & binary caches
 node_modules/
 client/node_modules/
 server/node_modules/
+server/bin/
 
-# Ignore development configuration files
-.git/
-.gitignore
-.npmignore
+# Ignore test and temporary files
+continuationResponse.json
+correctContinuationResponse.json
+playlistData.json
+rawItem71.json
+server/test_*
 
-# Ignore project documentation artifacts
+# Ignore internal agent config
+.agents/
+.gemini/
+
+# Documentation and plan artifacts
 walkthrough.md
 implementation_plan.md
 task.md

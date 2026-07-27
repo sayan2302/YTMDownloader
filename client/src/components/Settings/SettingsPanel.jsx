@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Settings, FolderOpen, Check, Trash2, Info } from 'lucide-react';
+import { Settings, FolderOpen, ExternalLink, Check, Trash2, Info } from 'lucide-react';
 import './SettingsPanel.css';
 
 export default function SettingsPanel({ outputDir, onSave }) {
@@ -11,6 +11,7 @@ export default function SettingsPanel({ outputDir, onSave }) {
     return localStorage.getItem('ytmd_audio_format') || 'm4a';
   });
   const [isBrowsing, setIsBrowsing] = useState(false);
+  const [isOpenLoading, setIsOpenLoading] = useState(false);
   const [showSavedMsg, setShowSavedMsg] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [showClearedMsg, setShowClearedMsg] = useState(false);
@@ -30,18 +31,39 @@ export default function SettingsPanel({ outputDir, onSave }) {
     setIsBrowsing(true);
     try {
       const res = await fetch('/api/browse');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.path) {
-          setDir(data.path);
-          onSave(data.path);
-          triggerSavedIndicator();
-        }
+      const data = await res.json();
+      if (res.ok && data.path) {
+        setDir(data.path);
+        onSave(data.path);
+        triggerSavedIndicator();
+      } else if (data.error && !data.error.includes('cancelled')) {
+        alert(data.error);
       }
     } catch (err) {
       console.error('Failed to browse for folder', err);
     } finally {
       setIsBrowsing(false);
+    }
+  };
+
+  const handleOpenFolder = async () => {
+    const targetPath = dir || outputDir || '';
+    setIsOpenLoading(true);
+    try {
+      const res = await fetch('/api/browse/open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderPath: targetPath })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to open folder');
+      }
+    } catch (err) {
+      console.error('Failed to open folder:', err);
+      alert('Failed to connect to server');
+    } finally {
+      setIsOpenLoading(false);
     }
   };
 
@@ -107,10 +129,19 @@ export default function SettingsPanel({ outputDir, onSave }) {
               />
               <button 
                 type="button" 
+                className="btn-open-folder" 
+                onClick={handleOpenFolder}
+                disabled={isOpenLoading || !dir}
+                title="Open folder in Finder (macOS) / File Explorer (Windows) / File Manager"
+              >
+                {isOpenLoading ? '...' : <ExternalLink size={18} />}
+              </button>
+              <button 
+                type="button" 
                 className="btn-browse" 
                 onClick={handleBrowse}
                 disabled={isBrowsing}
-                title="Browse directories"
+                title="Browse directory picker"
               >
                 {isBrowsing ? '...' : <FolderOpen size={18} />}
               </button>

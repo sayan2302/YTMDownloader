@@ -76,9 +76,10 @@ export function downloadTrack(videoId, title, rawOutputDir, audioFormat = 'm4a',
 
   const args = [
     '--no-cache-dir',
+    '--no-check-certificates',
     ...(path.isAbsolute(FFMPEG_PATH) ? ['--ffmpeg-location', FFMPEG_PATH] : []),
-    '--extractor-args', 'youtube:player_client=android_vr,web,mweb',
-    '-f', 'bestaudio',
+    '--extractor-args', 'youtube:player_client=android,web,tv',
+    '-f', 'ba/b/best',
     '-x',
     '--audio-format', audioFormat,
     '--embed-metadata',

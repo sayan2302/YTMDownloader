@@ -1,10 +1,47 @@
 {
   "name": "@supasayan/ytm",
-  "version": "1.0.28",
-  "description": "Root package to run both client and server",
+  "version": "1.0.30",
+  "description": "Cross-platform YouTube Music Downloader & Player with High-Res Audio (FLAC/M4A), automatic metadata tagging & modern Liquid Glass Web UI.",
   "main": "main.js",
   "productName": "YTM",
-  "bin": "bin/cli.js",
+  "bin": {
+    "ytm": "bin/cli.js",
+    "ytm-downloader": "bin/cli.js"
+  },
+  "keywords": [
+    "ytm",
+    "youtube-music",
+    "youtube-music-downloader",
+    "music-downloader",
+    "audio-downloader",
+    "yt-dlp",
+    "yt-dlp-gui",
+    "flac-downloader",
+    "high-res-audio",
+    "cli-music-player",
+    "npx-downloader",
+    "metadata-tagger"
+  ],
+  "author": "Sayan Pramanick",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sayan2302/YTMDownloader.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sayan2302/YTMDownloader/issues"
+  },
+  "homepage": "https://github.com/sayan2302/YTMDownloader#readme",
+  "files": [
+    "bin",
+    "server/*.js",
+    "server/routes",
+    "server/services",
+    "server/utils",
+    "client/dist",
+    "main.js",
+    "README.md"
+  ],
   "dependencies": {
     "express": "^4.21.0",
     "cors": "^2.8.5",
@@ -14,6 +51,8 @@
   "scripts": {
     "start": "npx concurrently \"npm run start --prefix server\" \"npm run dev --prefix client\"",
     "dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "build": "npm run build --prefix client",
+    "prepublishOnly": "npm run build",
     "install-all": "npm install --prefix server && npm install --prefix client",
     "app:dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"npx wait-on http://localhost:5173 && npx wait-on http://localhost:3001 && npx electron .\"",
     "app:build": "npm run build --prefix client && npx electron-builder --mac"

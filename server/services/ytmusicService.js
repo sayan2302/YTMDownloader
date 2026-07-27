@@ -138,6 +138,29 @@ ensureInitialized().catch((err) => {
   console.warn('[YTMusic] Initial startup check failed. Will retry on demand.', err.message);
 });
 
+function getHighResThumbnail(url, size = 540) {
+  if (!url || typeof url !== 'string') return url;
+  if (url.includes('googleusercontent.com') || url.includes('ggpht.com')) {
+    let highRes = url;
+    if (/[=/-]w\d+-h\d+/i.test(highRes)) {
+      highRes = highRes.replace(/([=/-])w\d+-h\d+/gi, `$1w${size}-h${size}`);
+    } else if (/[=/-]s\d+/i.test(highRes)) {
+      highRes = highRes.replace(/([=/-])s\d+/gi, `$1s${size}`);
+    } else if (/[=/-]w\d+/i.test(highRes)) {
+      highRes = highRes.replace(/([=/-])w\d+/gi, `$1w${size}`);
+    } else if (!highRes.includes('=')) {
+      highRes += `=w${size}-h${size}-l90-rj`;
+    }
+    return highRes;
+  }
+  if (url.includes('ytimg.com') || url.includes('youtube.com')) {
+    if (/\/(default|mqdefault|hqdefault|sddefault)\.jpg/i.test(url)) {
+      return url.replace(/\/(default|mqdefault|hqdefault|sddefault)\.jpg/gi, '/maxresdefault.jpg');
+    }
+  }
+  return url;
+}
+
 export async function searchSongs(query) {
   await ensureInitialized();
   try {
@@ -148,7 +171,7 @@ export async function searchSongs(query) {
       artist: result.artist?.name || 'Unknown Artist',
       album: result.album?.name || null,
       duration: result.duration,
-      thumbnail: result.thumbnails?.[result.thumbnails.length - 1]?.url || null
+      thumbnail: getHighResThumbnail(result.thumbnails?.[result.thumbnails.length - 1]?.url || null, 540)
     }));
   } catch (error) {
     console.error('ytmusicService search error:', error);
@@ -175,7 +198,7 @@ export async function getPlaylist(playlistId) {
         artist: result.artist?.name || 'Unknown Artist',
         album: null, // Playlists usually don't return album names in basic response
         duration: result.duration,
-        thumbnail: result.thumbnails?.[result.thumbnails.length - 1]?.url || null
+        thumbnail: getHighResThumbnail(result.thumbnails?.[result.thumbnails.length - 1]?.url || null, 540)
       }))
     };
   } catch (error) {
@@ -206,7 +229,7 @@ export async function getUpNextSongs(videoId) {
       artist: result.artists || 'Unknown Artist',
       album: null,
       duration: parseDurationToSeconds(result.duration),
-      thumbnail: result.thumbnail || null
+      thumbnail: getHighResThumbnail(result.thumbnail || null, 540)
     }));
   } catch (error) {
     console.error('ytmusicService getUpNexts error:', error);
