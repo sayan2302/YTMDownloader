@@ -1,6 +1,6 @@
 {
   "name": "@supasayan/ytm",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Cross-platform YouTube Music Downloader & Player with High-Res Audio (FLAC/M4A), automatic metadata tagging & modern Liquid Glass Web UI.",
   "main": "main.js",
   "productName": "YTM",
