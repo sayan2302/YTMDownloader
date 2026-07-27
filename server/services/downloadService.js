@@ -1,8 +1,8 @@
 import { spawn } from 'child_process';
-import { sanitizeFilename } from '../utils/sanitize.js';
+import { sanitizeFilename, resolveOutputDir } from '../utils/sanitize.js';
 import fs from 'fs';
 import path from 'path';
-import { YTDLP_PATH } from '../utils/dependencyChecker.js';
+import { YTDLP_PATH, FFMPEG_PATH } from '../utils/dependencyChecker.js';
 
 const activeProcesses = new Set();
 
@@ -54,7 +54,8 @@ function cleanupTempFiles(outputDir, title) {
   }
 }
 
-export function downloadTrack(videoId, title, outputDir, onProgress, onComplete, onError) {
+export function downloadTrack(videoId, title, rawOutputDir, onProgress, onComplete, onError) {
+  const outputDir = resolveOutputDir(rawOutputDir);
   // Ensure output directory exists
   if (!fs.existsSync(outputDir)) {
     try {
@@ -67,6 +68,7 @@ export function downloadTrack(videoId, title, outputDir, onProgress, onComplete,
 
   const args = [
     '--no-cache-dir',
+    ...(path.isAbsolute(FFMPEG_PATH) ? ['--ffmpeg-location', FFMPEG_PATH] : []),
     '--extractor-args', 'youtube:player_client=android_vr,web,mweb',
     '-f', 'bestaudio[ext=m4a]/bestaudio',
     '-x',

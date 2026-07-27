@@ -1,3 +1,6 @@
+import os from 'os';
+import path from 'path';
+
 export function sanitizeFilename(name) {
   if (!name) return 'Unknown';
   // Replace illegal filename characters with underscores
@@ -6,4 +9,12 @@ export function sanitizeFilename(name) {
   const trimmed = sanitized.trim();
   // Limit to 200 chars
   return trimmed.substring(0, 200);
+}
+
+export function resolveOutputDir(dirPath) {
+  if (!dirPath) return dirPath;
+  if (dirPath.startsWith('~')) {
+    return path.resolve(dirPath.replace(/^~(?=$|\/|\\)/, os.homedir()));
+  }
+  return path.resolve(dirPath);
 }

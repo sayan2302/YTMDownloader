@@ -3,8 +3,12 @@ import path from 'path';
 import https from 'https';
 import { execSync } from 'child_process';
 import ffmpeg from 'ffmpeg-static';
+import { fileURLToPath } from 'url';
 
-const BIN_DIR = path.join(process.cwd(), 'bin');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BIN_DIR = path.join(__dirname, '..', 'bin');
+
 let YTDLP_PATH = 'yt-dlp';
 let FFMPEG_PATH = ffmpeg || 'ffmpeg';
 
@@ -48,8 +52,11 @@ export async function checkAndSetupDependencies() {
 
   // 1. FFmpeg Verification
   try {
-    if (ffmpeg) {
+    if (ffmpeg && fs.existsSync(ffmpeg)) {
       console.log(`[System Check] FFmpeg resolved via ffmpeg-static at: ${ffmpeg}`);
+      if (process.platform !== 'win32') {
+        try { fs.chmodSync(ffmpeg, '755'); } catch (e) {}
+      }
       FFMPEG_PATH = ffmpeg;
       status.ffmpeg = 'ready';
     } else {

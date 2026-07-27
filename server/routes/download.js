@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import { downloadTrack } from '../services/downloadService.js';
 import { getLyricsText } from '../services/ytmusicService.js';
 import { FFMPEG_PATH, YTDLP_PATH } from '../utils/dependencyChecker.js';
+import { resolveOutputDir } from '../utils/sanitize.js';
 
 const router = express.Router();
 
@@ -20,8 +21,13 @@ const MAX_CONCURRENT = 3;
 let isQueuePaused = false;
 let queueSaveTimeout = null;
 
-const QUEUE_FILE = path.join(process.cwd(), 'queue.json');
-const QUEUE_FILE_TEMP = path.join(process.cwd(), 'queue.temp.json');
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const QUEUE_FILE = path.join(__dirname, '..', 'queue.json');
+const QUEUE_FILE_TEMP = path.join(__dirname, '..', 'queue.temp.json');
 
 // ---------------------------------------------------------
 // Disk Persistence
@@ -193,8 +199,9 @@ async function processQueue() {
 // Endpoints
 // ---------------------------------------------------------
 router.post('/', (req, res) => {
-  const { videoId, title, artist, album, thumbnail, outputDir, downloadLyrics } = req.body;
+  let { videoId, title, artist, album, thumbnail, outputDir, downloadLyrics } = req.body;
   if (!videoId || !outputDir) return res.status(400).json({ error: 'Missing videoId or outputDir' });
+  outputDir = resolveOutputDir(outputDir);
 
   // Duplicate Check
   for (const dl of downloadsMap.values()) {
@@ -217,8 +224,9 @@ router.post('/', (req, res) => {
 });
 
 router.post('/bulk', (req, res) => {
-  const { songs, outputDir, downloadLyrics } = req.body;
+  let { songs, outputDir, downloadLyrics } = req.body;
   if (!Array.isArray(songs) || !outputDir) return res.status(400).json({ error: 'Missing songs array or outputDir' });
+  outputDir = resolveOutputDir(outputDir);
 
   // Pre-flight check
   if (!fs.existsSync(outputDir)) {
